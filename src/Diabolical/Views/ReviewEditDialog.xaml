@@ -1,0 +1,9 @@
+<Window x:Class="Diabolical.Views.ReviewEditDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Review Item" Height="450" Width="400"
+        WindowStartupLocation="CenterOwner">
+    <Grid>
+
+    </Grid>
+</Window>

@@ -1,0 +1,6 @@
+bin/
+obj/
+*.user
+data/characters/*.json
+appsettings.local.json
+.vs/
