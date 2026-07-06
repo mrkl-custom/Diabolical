@@ -4,3 +4,4 @@ obj/
 data/characters/*.json
 appsettings.local.json
 .vs/
+.vscode/
