@@ -46,14 +46,34 @@ rate-limited, just wait and retry.
     "helm": {
       "name": "Rage of Harrogath",
       "rarity": "Unique",
+      "quality": "Ancestral",
       "itemPower": 800,
-      "affixes": ["+X Fury Generation", "..."],
-      "aspect": null
+      "affixes": [
+        { "text": "+40% Fury Generation", "source": "Base" },
+        { "text": "+180 Dexterity +[150 - 180] (Class Only)", "source": "Tempered" }
+      ],
+      "specialEffects": ["..."],
+      "transfigured": false,
+      "modifiable": true
     },
     "weapon1": { }
   }
 }
 ```
+
+Field notes:
+- `rarity`: `Common | Magic | Rare | Legendary | Unique | Mythic`
+- `quality`: `Normal | Ancestral` — separate axis from rarity
+- `affixes`: each entry has `text` (verbatim stat line) and `source`:
+  `Base | Tempered | Transfigured` — distinguishes a roll's origin, since
+  Tempering and Transfiguration add affixes distinct from the item's base roll
+- `specialEffects`: replaces a single `aspect` field. Holds zero entries
+  (normal rares/magic items), one entry (a Legendary's imprinted aspect),
+  or several (a Unique/Mythic's multiple passive effect paragraphs, or a
+  Transfigured amulet's extra Legendary power via Kullean Tuning Prism)
+- `transfigured` / `modifiable`: tracks Horadric Cube crafting state —
+  whether the item has been Transfigured, and whether it can still be
+  modified (tempered/masterworked/enchanted/imprinted) or is locked
 
 ## Project Structure
 ```
@@ -116,6 +136,19 @@ Diabolical/
   ```
 
 ## Decisions Log
+- **Item model refactored to support Mythic rarity, Ancestral quality,
+  Tempering, and Transfiguration.** Rarity enum now includes `Mythic`.
+  `quality` (`Normal`/`Ancestral`) added as a separate axis. `affixes`
+  changed from flat strings to `{ text, source }` objects, where `source`
+  is `Base`, `Tempered`, or `Transfigured` — needed because Tempering and
+  Transfiguration add rolls distinct from an item's base affixes. The
+  single `aspect` field was replaced with `specialEffects: string[]` to
+  hold a Legendary's one aspect, a Unique/Mythic's several passive effect
+  paragraphs, or a Transfigured amulet's extra Legendary power. Added
+  `transfigured` and `modifiable` flags to track Horadric Cube crafting
+  state (a Transfigured item is usually locked from further crafting).
+  This is a breaking change to the prior schema shape — acceptable since
+  no real save data exists yet.
 - **Vision output includes an inferred `slot` field**, separate from the
   final stored schema, so the merge step knows which equipment slot the
   parsed item belongs to. Review UI allows correcting it if Gemini
@@ -131,7 +164,12 @@ Diabolical/
   file at a time.
 
 ## Open Decisions (not yet finalized)
-- None currently — revisit this section as new design questions come up.
+- **Talisman system (Seals + Charms) is out of scope for now.** It's a
+  separate itemization layer (not tied to gear slots) added via the
+  Lord of Hatred expansion. Deliberately not modeled yet — revisit if
+  build planning needs it. If added later, it should live as its own
+  top-level section (e.g. `talisman: { seal, charms[] }`), not inside
+  `equipment`.
 
 ## Notes for Claude Code
 - This doc reflects design decisions made in a separate planning chat.

@@ -1,10 +1,17 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using Diabolical.Models;
 using Diabolical.Services;
 using Microsoft.Win32;
 
 namespace Diabolical.Views;
+
+/// <summary>
+/// Flattened, display-only view of an equipped item for the equipment DataGrid —
+/// not part of the persisted schema.
+/// </summary>
+public sealed record EquipmentRow(string Slot, string Name, ItemRarity Rarity, ItemQuality Quality, int ItemPower);
 
 public partial class MainWindow : Window
 {
@@ -83,7 +90,53 @@ public partial class MainWindow : Window
         await _databaseService.UpsertItemAsync(characterName, dialog.Slot, dialog.Item, characterClass);
 
         RefreshCharacterList();
+        await RefreshEquipmentListAsync(characterName);
         StatusText.Text = $"Saved '{dialog.Item.Name}' to {characterName}'s {dialog.Slot} slot.";
+    }
+
+    private async Task RefreshEquipmentListAsync(string characterName)
+    {
+        if (string.IsNullOrWhiteSpace(characterName))
+        {
+            EquipmentDataGrid.ItemsSource = null;
+            return;
+        }
+
+        var character = await _databaseService.LoadAsync(characterName);
+        EquipmentDataGrid.ItemsSource = character.Equipment
+            .Select(kvp => new EquipmentRow(kvp.Key, kvp.Value.Name, kvp.Value.Rarity, kvp.Value.Quality, kvp.Value.ItemPower))
+            .OrderBy(row => row.Slot, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private async void RemoveEquipmentButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string slot })
+        {
+            return;
+        }
+
+        var characterName = CurrentCharacterName;
+        if (string.IsNullOrWhiteSpace(characterName))
+        {
+            return;
+        }
+
+        var confirm = MessageBox.Show(
+            this,
+            $"Remove the item in '{slot}' from {characterName}'s equipment? This cannot be undone.",
+            "Remove Item",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+
+        if (confirm != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        await _databaseService.RemoveItemAsync(characterName, slot);
+        await RefreshEquipmentListAsync(characterName);
+        StatusText.Text = $"Removed item from {characterName}'s {slot} slot.";
     }
 
     private void OnCaptureCancelled()
@@ -100,6 +153,7 @@ public partial class MainWindow : Window
 
         var character = await _databaseService.LoadAsync(name);
         ClassTextBox.Text = character.Class;
+        await RefreshEquipmentListAsync(name);
     }
 
     private async void SwitchCharacterButton_Click(object sender, RoutedEventArgs e)
@@ -115,6 +169,7 @@ public partial class MainWindow : Window
         ClassTextBox.Text = character.Class;
         RefreshCharacterList();
         CharacterComboBox.Text = name;
+        await RefreshEquipmentListAsync(name);
         StatusText.Text = $"Switched to '{name}'.";
     }
 

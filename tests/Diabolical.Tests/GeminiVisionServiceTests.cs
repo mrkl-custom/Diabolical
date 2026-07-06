@@ -31,7 +31,11 @@ public class GeminiVisionServiceTests
     [Fact]
     public async Task ExtractItemAsync_ValidJson_ReturnsParsedItem()
     {
-        const string itemJson = """{"slot":"helm","name":"Rage of Harrogath","rarity":"Unique","itemPower":800,"affixes":["+40% Fury Generation"],"aspect":null}""";
+        const string itemJson = """
+            {"slot":"helm","name":"Rage of Harrogath","rarity":"Unique","quality":"Ancestral","itemPower":800,
+             "affixes":[{"text":"+40% Fury Generation","source":"Base"}],"specialEffects":[],
+             "transfigured":false,"modifiable":true}
+            """;
         var service = CreateService(HttpStatusCode.OK, WrapAsGeminiEnvelope(itemJson));
 
         var result = await service.ExtractItemAsync(new byte[] { 1, 2, 3 });
@@ -41,14 +45,21 @@ public class GeminiVisionServiceTests
         Assert.Equal("helm", result.Item!.Slot);
         Assert.Equal("Rage of Harrogath", result.Item.Name);
         Assert.Equal(ItemRarity.Unique, result.Item.Rarity);
+        Assert.Equal(ItemQuality.Ancestral, result.Item.Quality);
         Assert.Equal(800, result.Item.ItemPower);
-        Assert.Null(result.Item.Aspect);
+        Assert.Single(result.Item.Affixes);
+        Assert.Equal(AffixSource.Base, result.Item.Affixes[0].Source);
+        Assert.Empty(result.Item.SpecialEffects);
+        Assert.True(result.Item.Modifiable);
     }
 
     [Fact]
     public async Task ExtractItemAsync_MarkdownFencedJson_StripsFencesAndParses()
     {
-        const string itemJson = """{"slot":"weapon1","name":"Windforce","rarity":"Legendary","itemPower":750,"affixes":[],"aspect":null}""";
+        const string itemJson = """
+            {"slot":"weapon1","name":"Windforce","rarity":"Legendary","quality":"Normal","itemPower":750,
+             "affixes":[],"specialEffects":["Aspect of Disobedience"],"transfigured":false,"modifiable":true}
+            """;
         var fenced = $"```json\n{itemJson}\n```";
         var service = CreateService(HttpStatusCode.OK, WrapAsGeminiEnvelope(fenced));
 
@@ -57,6 +68,7 @@ public class GeminiVisionServiceTests
         Assert.True(result.Success);
         Assert.Equal("Windforce", result.Item!.Name);
         Assert.Equal(ItemRarity.Legendary, result.Item.Rarity);
+        Assert.Equal("Aspect of Disobedience", Assert.Single(result.Item.SpecialEffects));
     }
 
     [Fact]

@@ -78,6 +78,24 @@ public class ItemDatabaseService
     }
 
     /// <summary>
+    /// Loads the character, removes a single equipment slot if present, and saves the
+    /// whole file back — every other slot is left as-is. Counterpart to UpsertItemAsync
+    /// for the equipment list's remove action.
+    /// </summary>
+    public async Task<CharacterEquipment> RemoveItemAsync(
+        string characterName,
+        string slot,
+        CancellationToken cancellationToken = default)
+    {
+        var character = await LoadAsync(characterName, cancellationToken);
+        character.Character = characterName;
+        character.Equipment.Remove(slot);
+
+        await SaveAsync(character, cancellationToken);
+        return character;
+    }
+
+    /// <summary>
     /// Character names with a saved file, for populating the character switcher —
     /// derived from filenames rather than tracked separately.
     /// </summary>

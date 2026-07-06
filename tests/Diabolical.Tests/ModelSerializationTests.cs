@@ -25,14 +25,20 @@ public class ModelSerializationTests
         var helm = character.Equipment["helm"];
         Assert.Equal("Rage of Harrogath", helm.Name);
         Assert.Equal(ItemRarity.Unique, helm.Rarity);
+        Assert.Equal(ItemQuality.Ancestral, helm.Quality);
         Assert.Equal(800, helm.ItemPower);
         Assert.Equal(2, helm.Affixes.Count);
-        Assert.Null(helm.Aspect);
+        Assert.All(helm.Affixes, a => Assert.Equal(AffixSource.Base, a.Source));
+        Assert.Single(helm.SpecialEffects);
+        Assert.False(helm.Transfigured);
+        Assert.True(helm.Modifiable);
 
         Assert.True(character.Equipment.ContainsKey("weapon1"));
         var weapon1 = character.Equipment["weapon1"];
         Assert.Equal(ItemRarity.Legendary, weapon1.Rarity);
-        Assert.Equal("Aspect of Disobedience", weapon1.Aspect);
+        Assert.Equal(ItemQuality.Normal, weapon1.Quality);
+        Assert.Equal(AffixSource.Tempered, weapon1.Affixes[1].Source);
+        Assert.Equal("Aspect of Disobedience", Assert.Single(weapon1.SpecialEffects));
     }
 
     [Fact]
@@ -52,11 +58,22 @@ public class ModelSerializationTests
     [Fact]
     public void Rarity_UnrecognizedValue_FallsBackToUnknownInsteadOfThrowing()
     {
-        const string json = """{"name":"Mystery Item","rarity":"Ancestral","itemPower":1,"affixes":[]}""";
+        const string json = """{"name":"Mystery Item","rarity":"Nonsense","quality":"Normal","itemPower":1,"affixes":[]}""";
 
         var item = JsonSerializer.Deserialize<EquipmentItem>(json);
 
         Assert.NotNull(item);
         Assert.Equal(ItemRarity.Unknown, item!.Rarity);
+    }
+
+    [Fact]
+    public void AffixSource_UnrecognizedValue_FallsBackToBaseInsteadOfThrowing()
+    {
+        const string json = """{"text":"+100 Strength","source":"Nonsense"}""";
+
+        var affix = JsonSerializer.Deserialize<ItemAffix>(json);
+
+        Assert.NotNull(affix);
+        Assert.Equal(AffixSource.Base, affix!.Source);
     }
 }

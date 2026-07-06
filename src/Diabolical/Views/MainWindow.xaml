@@ -25,10 +25,31 @@
             </StackPanel>
         </GroupBox>
 
-        <StackPanel VerticalAlignment="Top">
+        <StackPanel DockPanel.Dock="Top" VerticalAlignment="Top">
             <TextBlock Text="Press the global hotkey (see appsettings.local.json) or click below, then drag-select the item tooltip." TextWrapping="Wrap" Margin="0,0,0,12" />
             <Button x:Name="TestCaptureButton" Content="Test Capture" Width="140" HorizontalAlignment="Left" Click="TestCaptureButton_Click" />
             <TextBlock x:Name="StatusText" Margin="0,12,0,0" TextWrapping="Wrap" />
         </StackPanel>
+
+        <GroupBox Header="Equipment">
+            <DataGrid x:Name="EquipmentDataGrid" Margin="4" AutoGenerateColumns="False"
+                      CanUserAddRows="False" CanUserDeleteRows="False" IsReadOnly="True"
+                      HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Slot" Width="100" Binding="{Binding Slot}"/>
+                    <DataGridTextColumn Header="Name" Width="*" Binding="{Binding Name}"/>
+                    <DataGridTextColumn Header="Rarity" Width="90" Binding="{Binding Rarity}"/>
+                    <DataGridTextColumn Header="Quality" Width="90" Binding="{Binding Quality}"/>
+                    <DataGridTextColumn Header="Item Power" Width="90" Binding="{Binding ItemPower}"/>
+                    <DataGridTemplateColumn Header="" Width="80">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Button Content="Remove" Padding="6,2" Tag="{Binding Slot}" Click="RemoveEquipmentButton_Click"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </GroupBox>
     </DockPanel>
 </Window>

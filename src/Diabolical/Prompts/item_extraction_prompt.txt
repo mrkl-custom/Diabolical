@@ -10,30 +10,65 @@ Output schema:
   "slot": string,       // inferred equipment slot, one of:
                          // "helm", "chest", "gloves", "pants", "boots",
                          // "weapon1", "weapon2", "ring1", "ring2",
-                         // "amulet". If unclear from the tooltip alone,
-                         // make your best guess based on item type.
-  "name": string,        // the item's name as shown
-  "rarity": string,      // one of: "Common", "Magic", "Rare", "Legendary", "Unique"
-  "itemPower": number,   // the item power value shown on the tooltip
-  "affixes": string[],   // each affix/stat line as its own string, verbatim
-  "aspect": string|null  // the aspect name + effect text if present and
-                         // socketed/imprinted, otherwise null
+                         // "amulet". If unclear, make your best guess
+                         // based on item type.
+  "name": string,
+  "rarity": string,      // one of: "Common", "Magic", "Rare", "Legendary",
+                         // "Unique", "Mythic"
+  "quality": string,     // "Normal" or "Ancestral"
+  "itemPower": number,
+  "affixes": [
+    {
+      "text": string,    // the stat line, verbatim, including any
+                         // bracketed range shown (e.g. "+180 Dexterity
+                         // +[150 - 180]")
+      "source": string   // "Base", "Tempered", or "Transfigured".
+                         // Tempered affixes are visually distinguished
+                         // in-game (bracketed range appended to a base
+                         // stat, or a stat line added after crafting).
+                         // If you can't tell, use "Base".
+    }
+  ],
+  "specialEffects": string[], // Legendary aspect text (one entry), or
+                              // Unique/Mythic passive effect paragraphs
+                              // (one entry per distinct paragraph/effect
+                              // block). Empty array if none.
+  "transfigured": boolean,    // true if tooltip shows a "Transfigured"
+                              // tag/indicator, false/unknown otherwise
+  "modifiable": boolean       // true unless tooltip indicates the item
+                              // is locked/unmodifiable; default true
+                              // if unclear
 }
 
 Rules:
 - If a field genuinely cannot be determined from the image, use a
-  reasonable empty value (empty string, empty array, or null) — do not
+  reasonable empty value (empty string, empty array, false) — do not
   omit the field.
-- Do not invent stats that aren't visible in the tooltip.
-- Preserve numeric values exactly as shown; do not round or reformat them.
-- affixes should not include the aspect text — aspect goes in its own field.
+- Do not invent stats or effects that aren't visible in the tooltip.
+- Preserve numeric values and bracketed ranges exactly as shown; do not
+  round or reformat them.
+- Each distinct paragraph of unique/mythic passive text should be its
+  own entry in specialEffects — don't merge them into one string.
 
 Example output:
 {
-  "slot": "helm",
-  "name": "Rage of Harrogath",
-  "rarity": "Unique",
-  "itemPower": 800,
-  "affixes": ["+35.0% Fury Generation", "+12.5% Damage while Berserking"],
-  "aspect": null
+  "slot": "amulet",
+  "name": "Melted Heart of Selig",
+  "rarity": "Mythic",
+  "quality": "Ancestral",
+  "itemPower": 900,
+  "affixes": [
+    { "text": "+230 All Resist", "source": "Base" },
+    { "text": "+180 Dexterity +[150 - 180] (Class Only)", "source": "Tempered" },
+    { "text": "x28% Vulnerable Damage Multiplier [16 - 28]%", "source": "Tempered" },
+    { "text": "+630 Cold Resistance [524 - 630]", "source": "Tempered" },
+    { "text": "20.0% Resource Generation [20.0]%", "source": "Tempered" }
+  ],
+  "specialEffects": [
+    "Lucky Hit: Up to a 15% Chance to Restore +15 Primary Resource",
+    "Damage is dealt to your Primary Resource before Life and damage taken this way is drastically reduced. Your Primary Resource is doubled but Maximum Life is reduced by 75%.",
+    "When there are at least 5 Close enemies, Stun them for 7 [4 - 7] seconds. Can only occur once every 20 seconds."
+  ],
+  "transfigured": false,
+  "modifiable": true
 }

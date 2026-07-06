@@ -19,21 +19,34 @@ public class ParsedItemExtraction
     [JsonConverter(typeof(ItemRarityJsonConverter))]
     public ItemRarity Rarity { get; set; }
 
+    [JsonPropertyName("quality")]
+    [JsonConverter(typeof(ItemQualityJsonConverter))]
+    public ItemQuality Quality { get; set; }
+
     [JsonPropertyName("itemPower")]
     public int ItemPower { get; set; }
 
     [JsonPropertyName("affixes")]
-    public List<string> Affixes { get; set; } = new();
+    public List<ItemAffix> Affixes { get; set; } = new();
 
-    [JsonPropertyName("aspect")]
-    public string? Aspect { get; set; }
+    [JsonPropertyName("specialEffects")]
+    public List<string> SpecialEffects { get; set; } = new();
+
+    [JsonPropertyName("transfigured")]
+    public bool Transfigured { get; set; }
+
+    [JsonPropertyName("modifiable")]
+    public bool Modifiable { get; set; } = true;
 
     public EquipmentItem ToEquipmentItem() => new()
     {
         Name = Name,
         Rarity = Rarity,
+        Quality = Quality,
         ItemPower = ItemPower,
         Affixes = Affixes,
-        Aspect = Aspect
+        SpecialEffects = SpecialEffects,
+        Transfigured = Transfigured,
+        Modifiable = Modifiable
     };
 }
