@@ -22,6 +22,10 @@ over robustness, scalability, or high-availability concerns.
 4. **Review/Edit UI** — Show the parsed item to the user for confirmation
    or correction before it's saved. LLM output isn't blindly trusted.
 5. **Save** — Merge/update the item into the character's local JSON file.
+6. **Export** — From the UI, export a character's equipment JSON to the
+   clipboard or to a standalone file, for handing off to an AI assistant
+   as context. This is the actual point of the app, so it should be a
+   one-click/one-command action, not buried in a menu.
 
 No fallback LLM providers needed (hobby scope) — if Gemini's free tier is
 rate-limited, just wait and retry.
@@ -121,10 +125,6 @@ Diabolical/
   moves depending on cursor/item location, so a fixed crop region isn't
   reliable. User hits the hotkey, then drags a selection box over the
   tooltip each time.
-- **Screen capture uses `System.Drawing.Common`** (GDI `CopyFromScreen`) rather than raw
-  Win32 P/Invoke, in addition to the Tech Stack libraries listed above — it's a single
-  well-maintained package and far less code than hand-rolled BitBlt interop. Windows-only
-  usage, which matches this project already.
 - **Storage: one JSON file per character**, stored under
   `data/characters/{characterName}.json`, matching the schema above.
   `ItemDatabaseService` reads/writes/merges against a single character's
