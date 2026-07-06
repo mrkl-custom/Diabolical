@@ -121,6 +121,10 @@ Diabolical/
   moves depending on cursor/item location, so a fixed crop region isn't
   reliable. User hits the hotkey, then drags a selection box over the
   tooltip each time.
+- **Screen capture uses `System.Drawing.Common`** (GDI `CopyFromScreen`) rather than raw
+  Win32 P/Invoke, in addition to the Tech Stack libraries listed above — it's a single
+  well-maintained package and far less code than hand-rolled BitBlt interop. Windows-only
+  usage, which matches this project already.
 - **Storage: one JSON file per character**, stored under
   `data/characters/{characterName}.json`, matching the schema above.
   `ItemDatabaseService` reads/writes/merges against a single character's

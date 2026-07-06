@@ -2,7 +2,9 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Diabolical" Height="450" Width="800">
-    <Grid>
-
-    </Grid>
+    <StackPanel Margin="16" VerticalAlignment="Top">
+        <TextBlock Text="Press the global hotkey (see appsettings.local.json) or click below, then drag-select the item tooltip." TextWrapping="Wrap" Margin="0,0,0,12" />
+        <Button x:Name="TestCaptureButton" Content="Test Capture" Width="140" HorizontalAlignment="Left" Click="TestCaptureButton_Click" />
+        <TextBlock x:Name="StatusText" Margin="0,12,0,0" TextWrapping="Wrap" />
+    </StackPanel>
 </Window>
