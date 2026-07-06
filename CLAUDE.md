@@ -110,10 +110,23 @@ Diabolical/
   .vs/
   ```
 
+## Decisions Log
+- **Storage: one JSON file per character**, stored under
+  `data/characters/{characterName}.json`, matching the schema above.
+  `ItemDatabaseService` reads/writes/merges against a single character's
+  file at a time.
+- **Equipment slots**: `CharacterEquipment.Equipment` is a `Dictionary<string, EquipmentItem>`
+  keyed by slot name (`helm`, `weapon1`, ...) rather than fixed properties, since slots aren't
+  a fixed set (dual-wield, rings, etc.) and a dictionary serializes to the schema shape directly.
+- **Rarity**: `EquipmentItem.Rarity` is the `ItemRarity` enum (`Common`/`Magic`/`Rare`/`Legendary`/
+  `Unique`/`Mythic`/`Unknown`), not a free string. A custom `JsonConverter`
+  (`ItemRarityJsonConverter`) parses case-insensitively and falls back to `Unknown` on
+  unrecognized values instead of throwing, so a malformed Gemini response doesn't abort
+  the whole parse before the user reaches the review/edit screen.
+
 ## Open Decisions (not yet finalized)
 - Exact Gemini prompt wording / few-shot examples for the extraction schema.
 - Whether tooltip cropping is fixed-region or user drag-select.
-- Whether to support multiple characters in one file or one file per character.
 
 ## Notes for Claude Code
 - This doc reflects design decisions made in a separate planning chat.

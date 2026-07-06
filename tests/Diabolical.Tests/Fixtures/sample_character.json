@@ -1,0 +1,21 @@
+{
+  "character": "MyBarb",
+  "class": "Barbarian",
+  "lastUpdated": "2026-07-06T00:00:00Z",
+  "equipment": {
+    "helm": {
+      "name": "Rage of Harrogath",
+      "rarity": "Unique",
+      "itemPower": 800,
+      "affixes": ["+40% Fury Generation", "+20% Damage while Berserking"],
+      "aspect": null
+    },
+    "weapon1": {
+      "name": "Windforce",
+      "rarity": "Legendary",
+      "itemPower": 750,
+      "affixes": ["+15% Attack Speed", "+30% Vulnerable Damage"],
+      "aspect": "Aspect of Disobedience"
+    }
+  }
+}
