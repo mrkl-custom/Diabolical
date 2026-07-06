@@ -1,1 +1,39 @@
-Prompt wording and few-shot examples not yet finalized (see CLAUDE.md "Open Decisions").
+You are extracting structured item data from a screenshot of a Diablo 4
+item tooltip. The image shows a single item's tooltip as it appears in
+the in-game inventory or equipped-gear screen.
+
+Return ONLY a single valid JSON object. No markdown code fences, no
+commentary, no explanation before or after — just the JSON.
+
+Output schema:
+{
+  "slot": string,       // inferred equipment slot, one of:
+                         // "helm", "chest", "gloves", "pants", "boots",
+                         // "weapon1", "weapon2", "ring1", "ring2",
+                         // "amulet". If unclear from the tooltip alone,
+                         // make your best guess based on item type.
+  "name": string,        // the item's name as shown
+  "rarity": string,      // one of: "Common", "Magic", "Rare", "Legendary", "Unique"
+  "itemPower": number,   // the item power value shown on the tooltip
+  "affixes": string[],   // each affix/stat line as its own string, verbatim
+  "aspect": string|null  // the aspect name + effect text if present and
+                         // socketed/imprinted, otherwise null
+}
+
+Rules:
+- If a field genuinely cannot be determined from the image, use a
+  reasonable empty value (empty string, empty array, or null) — do not
+  omit the field.
+- Do not invent stats that aren't visible in the tooltip.
+- Preserve numeric values exactly as shown; do not round or reformat them.
+- affixes should not include the aspect text — aspect goes in its own field.
+
+Example output:
+{
+  "slot": "helm",
+  "name": "Rage of Harrogath",
+  "rarity": "Unique",
+  "itemPower": 800,
+  "affixes": ["+35.0% Fury Generation", "+12.5% Damage while Berserking"],
+  "aspect": null
+}

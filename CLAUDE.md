@@ -9,9 +9,10 @@ This is a **hobby project** — prioritize simplicity and low maintenance
 over robustness, scalability, or high-availability concerns.
 
 ## Core Flow
-1. **Capture** — User presses a global hotkey. App takes a screenshot and
-   crops to the item tooltip region (fixed layout assumption, or manual
-   drag-select if needed).
+1. **Capture** — User presses a global hotkey, then drag-selects the tooltip
+   region on screen. Fixed-region cropping isn't feasible since the item
+   tooltip's position moves depending on where the cursor/item is in the
+   game window, so the user manually selects the area each time.
 2. **Vision LLM parse** — The cropped image is sent directly to
    **Gemini 2.5 Flash** (Google AI Studio free tier) with a fixed prompt
    asking for strict JSON output matching the schema below.
@@ -111,22 +112,22 @@ Diabolical/
   ```
 
 ## Decisions Log
+- **Vision output includes an inferred `slot` field**, separate from the
+  final stored schema, so the merge step knows which equipment slot the
+  parsed item belongs to. Review UI allows correcting it if Gemini
+  guesses wrong. See `Prompts/item_extraction_prompt.txt` for the
+  finalized extraction prompt and its output shape.
+- **Capture: drag-select, not fixed-region.** Tooltip position in-game
+  moves depending on cursor/item location, so a fixed crop region isn't
+  reliable. User hits the hotkey, then drags a selection box over the
+  tooltip each time.
 - **Storage: one JSON file per character**, stored under
   `data/characters/{characterName}.json`, matching the schema above.
   `ItemDatabaseService` reads/writes/merges against a single character's
   file at a time.
-- **Equipment slots**: `CharacterEquipment.Equipment` is a `Dictionary<string, EquipmentItem>`
-  keyed by slot name (`helm`, `weapon1`, ...) rather than fixed properties, since slots aren't
-  a fixed set (dual-wield, rings, etc.) and a dictionary serializes to the schema shape directly.
-- **Rarity**: `EquipmentItem.Rarity` is the `ItemRarity` enum (`Common`/`Magic`/`Rare`/`Legendary`/
-  `Unique`/`Mythic`/`Unknown`), not a free string. A custom `JsonConverter`
-  (`ItemRarityJsonConverter`) parses case-insensitively and falls back to `Unknown` on
-  unrecognized values instead of throwing, so a malformed Gemini response doesn't abort
-  the whole parse before the user reaches the review/edit screen.
 
 ## Open Decisions (not yet finalized)
-- Exact Gemini prompt wording / few-shot examples for the extraction schema.
-- Whether tooltip cropping is fixed-region or user drag-select.
+- None currently — revisit this section as new design questions come up.
 
 ## Notes for Claude Code
 - This doc reflects design decisions made in a separate planning chat.
