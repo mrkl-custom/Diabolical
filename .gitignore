@@ -2,6 +2,7 @@ bin/
 obj/
 *.user
 data/characters/*.json
+data/exports/*.json
 appsettings.local.json
 .vs/
 .vscode/

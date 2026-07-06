@@ -77,6 +77,32 @@ public class ItemDatabaseService
         return character;
     }
 
+    /// <summary>
+    /// Character names with a saved file, for populating the character switcher —
+    /// derived from filenames rather than tracked separately.
+    /// </summary>
+    public IReadOnlyList<string> ListCharacterNames()
+    {
+        if (!Directory.Exists(_dataDirectory))
+        {
+            return Array.Empty<string>();
+        }
+
+        return Directory.GetFiles(_dataDirectory, "*.json")
+            .Select(Path.GetFileNameWithoutExtension)
+            .Where(name => !string.IsNullOrEmpty(name))
+            .Select(name => name!)
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Serializes a character with the same formatting used on disk, so the export
+    /// flow (clipboard/file) matches what SaveAsync would have written.
+    /// </summary>
+    public static string Serialize(CharacterEquipment character) =>
+        JsonSerializer.Serialize(character, SerializerOptions);
+
     private string GetFilePath(string characterName) => Path.Combine(_dataDirectory, $"{characterName}.json");
 
     private static string ResolveDefaultDataDirectory() =>
