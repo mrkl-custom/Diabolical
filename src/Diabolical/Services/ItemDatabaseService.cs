@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Diabolical.Models;
 
 namespace Diabolical.Services;
@@ -10,6 +11,18 @@ namespace Diabolical.Services;
 /// </summary>
 public class ItemDatabaseService
 {
+    /// <summary>
+    /// Max equipped items per category. Everything not listed here is capped at a single
+    /// entry. "ring" is always 2. "weapon" is 4, not 2 — Barbarian's weapon-swap mechanic
+    /// means up to two full one-hand/one-hand sets (4 weapons) can be equipped at once, and
+    /// a tooltip alone can't tell us which set/hand an item occupies, so we don't try to
+    /// model slots more precisely than "how many of this category can exist" — items within
+    /// a multi-item category are matched by name instead.
+    /// </summary>
+    private static readonly Dictionary<string, int> CategoryCapacities =
+        new(StringComparer.OrdinalIgnoreCase) { ["weapon"] = 4, ["ring"] = 2 };
+    private const int DefaultCategoryCapacity = 1;
+
     private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
 
     private readonly string _dataDirectory;
@@ -53,9 +66,13 @@ public class ItemDatabaseService
     }
 
     /// <summary>
-    /// Loads the character (or starts a new one if it hasn't been saved yet), replaces a
-    /// single equipment slot, and saves the whole file back — every other slot is left as-is.
-    /// This is the operation the capture + review flow triggers on each save.
+    /// Loads the character (or starts a new one if it hasn't been saved yet), merges an item
+    /// into an equipment category, and saves the whole file back — every other category is
+    /// left as-is. This is the operation the capture + review flow triggers on each save.
+    /// An item with the same name already in that category is replaced in place (e.g.
+    /// re-scanning after tempering); otherwise it's added, up to the category's capacity (see
+    /// CategoryCapacities). Beyond capacity, the oldest entry is evicted to make room, since
+    /// a re-scan has no way to say which existing item it's replacing.
     /// </summary>
     public async Task<CharacterEquipment> UpsertItemAsync(
         string characterName,
@@ -71,25 +88,54 @@ public class ItemDatabaseService
             character.Class = characterClass;
         }
 
-        character.Equipment[slot] = item;
+        if (!character.Equipment.TryGetValue(slot, out var items))
+        {
+            items = new List<EquipmentItem>();
+            character.Equipment[slot] = items;
+        }
+
+        var existingIndex = items.FindIndex(i => string.Equals(i.Name, item.Name, StringComparison.OrdinalIgnoreCase));
+        if (existingIndex >= 0)
+        {
+            items[existingIndex] = item;
+        }
+        else
+        {
+            items.Add(item);
+            var capacity = CategoryCapacities.GetValueOrDefault(slot, DefaultCategoryCapacity);
+            while (items.Count > capacity)
+            {
+                items.RemoveAt(0);
+            }
+        }
 
         await SaveAsync(character, cancellationToken);
         return character;
     }
 
     /// <summary>
-    /// Loads the character, removes a single equipment slot if present, and saves the
-    /// whole file back — every other slot is left as-is. Counterpart to UpsertItemAsync
-    /// for the equipment list's remove action.
+    /// Loads the character, removes a single named item from an equipment category if
+    /// present (dropping the category entirely once it's empty), and saves the whole file
+    /// back — every other item is left as-is. Counterpart to UpsertItemAsync for the
+    /// equipment list's remove action.
     /// </summary>
     public async Task<CharacterEquipment> RemoveItemAsync(
         string characterName,
         string slot,
+        string itemName,
         CancellationToken cancellationToken = default)
     {
         var character = await LoadAsync(characterName, cancellationToken);
         character.Character = characterName;
-        character.Equipment.Remove(slot);
+
+        if (character.Equipment.TryGetValue(slot, out var items))
+        {
+            items.RemoveAll(i => string.Equals(i.Name, itemName, StringComparison.OrdinalIgnoreCase));
+            if (items.Count == 0)
+            {
+                character.Equipment.Remove(slot);
+            }
+        }
 
         await SaveAsync(character, cancellationToken);
         return character;
@@ -120,6 +166,24 @@ public class ItemDatabaseService
     /// </summary>
     public static string Serialize(CharacterEquipment character) =>
         JsonSerializer.Serialize(character, SerializerOptions);
+
+    /// <summary>
+    /// Serializes a single equipped item standalone (for the item details popup's "Copy
+    /// JSON" action), with its equipment-category slot inlined as a leading property — the
+    /// item alone has no category signal, and that's the point of copying it in the first
+    /// place (as context for an AI assistant).
+    /// </summary>
+    public static string SerializeItem(string slot, EquipmentItem item)
+    {
+        var itemNode = JsonSerializer.SerializeToNode(item, SerializerOptions)!.AsObject();
+        var output = new JsonObject { ["slot"] = slot };
+        foreach (var property in itemNode)
+        {
+            output[property.Key] = property.Value?.DeepClone();
+        }
+
+        return output.ToJsonString(SerializerOptions);
+    }
 
     private string GetFilePath(string characterName) => Path.Combine(_dataDirectory, $"{characterName}.json");
 

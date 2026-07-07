@@ -16,20 +16,27 @@
             </StackPanel>
         </GroupBox>
 
-        <GroupBox Header="Export" DockPanel.Dock="Bottom" Margin="0,12,0,0">
-            <StackPanel Orientation="Horizontal" Margin="8">
-                <Button x:Name="CopyJsonButton" Content="Copy JSON to Clipboard" Width="180" Margin="0,0,8,0"
-                        Click="CopyJsonButton_Click"/>
-                <Button x:Name="ExportFileButton" Content="Export to File..." Width="150"
-                        Click="ExportFileButton_Click"/>
-            </StackPanel>
-        </GroupBox>
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+            <GroupBox Header="Vision Provider" DockPanel.Dock="Right" Margin="12,0,0,0">
+                <StackPanel Orientation="Horizontal" Margin="8">
+                    <Ellipse x:Name="ProviderStatusDot" Width="12" Height="12" Fill="Gray" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="ProviderStatusText" Text="Checking..." VerticalAlignment="Center"/>
+                    <Button x:Name="RecheckProviderButton" Content="Recheck" Margin="8,0,0,0" Click="RecheckProviderButton_Click"/>
+                </StackPanel>
+            </GroupBox>
+            <GroupBox Header="Export">
+                <StackPanel Orientation="Horizontal" Margin="8">
+                    <Button x:Name="CopyJsonButton" Content="Copy JSON to Clipboard" Width="180" Margin="0,0,8,0"
+                            Click="CopyJsonButton_Click"/>
+                    <Button x:Name="ExportFileButton" Content="Export to File..." Width="150"
+                            Click="ExportFileButton_Click"/>
+                </StackPanel>
+            </GroupBox>
+        </DockPanel>
 
-        <StackPanel DockPanel.Dock="Top" VerticalAlignment="Top">
-            <TextBlock Text="Press the global hotkey (see appsettings.local.json) or click below, then drag-select the item tooltip." TextWrapping="Wrap" Margin="0,0,0,12" />
-            <Button x:Name="TestCaptureButton" Content="Test Capture" Width="140" HorizontalAlignment="Left" Click="TestCaptureButton_Click" />
-            <TextBlock x:Name="StatusText" Margin="0,12,0,0" TextWrapping="Wrap" />
-        </StackPanel>
+        <GroupBox Header="Status" DockPanel.Dock="Bottom" Margin="0,12,0,0">
+            <ListBox x:Name="StatusList" Height="100" Margin="4"/>
+        </GroupBox>
 
         <GroupBox Header="Equipment">
             <DataGrid x:Name="EquipmentDataGrid" Margin="4" AutoGenerateColumns="False"
@@ -41,10 +48,17 @@
                     <DataGridTextColumn Header="Rarity" Width="90" Binding="{Binding Rarity}"/>
                     <DataGridTextColumn Header="Quality" Width="90" Binding="{Binding Quality}"/>
                     <DataGridTextColumn Header="Item Power" Width="90" Binding="{Binding ItemPower}"/>
+                    <DataGridTemplateColumn Header="" Width="70">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Button Content="View" Padding="6,2" Tag="{Binding}" Click="ViewEquipmentButton_Click"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
                     <DataGridTemplateColumn Header="" Width="80">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <Button Content="Remove" Padding="6,2" Tag="{Binding Slot}" Click="RemoveEquipmentButton_Click"/>
+                                <Button Content="Remove" Padding="6,2" Tag="{Binding}" Click="RemoveEquipmentButton_Click"/>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>

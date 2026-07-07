@@ -1,6 +1,8 @@
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 
 namespace Diabolical.Views;
@@ -9,9 +11,25 @@ namespace Diabolical.Views;
 /// Full-virtual-screen transparent window that lets the user drag a rectangle over the
 /// item tooltip. No fixed coordinates or window lookups — the user marks the region
 /// themselves each time, since the tooltip's on-screen position varies (see CLAUDE.md).
+///
+/// Set WS_EX_NOACTIVATE so showing this window never steals OS focus/foreground from the
+/// game — many games (Diablo 4 included) hide item tooltips the instant they lose focus,
+/// which would defeat the whole capture flow. A non-activating window still receives mouse
+/// input normally (that's independent of keyboard/activation focus), so drag-select keeps
+/// working; it just means the window can never receive keyboard input, hence right-click
+/// (not Escape) to cancel.
 /// </summary>
 public partial class SelectionOverlayWindow : Window
 {
+    private const int GwlExStyle = -20;
+    private const int WsExNoActivate = 0x08000000;
+
+    [DllImport("user32.dll")]
+    private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll")]
+    private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+
     private Point? _startPoint;
 
     public event EventHandler<Int32Rect>? SelectionCompleted;
@@ -26,7 +44,13 @@ public partial class SelectionOverlayWindow : Window
         Height = SystemParameters.VirtualScreenHeight;
     }
 
-    private void Window_Loaded(object sender, RoutedEventArgs e) => Keyboard.Focus(this);
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        var hwnd = new WindowInteropHelper(this).Handle;
+        var exStyle = GetWindowLong(hwnd, GwlExStyle);
+        SetWindowLong(hwnd, GwlExStyle, exStyle | WsExNoActivate);
+    }
 
     private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
@@ -81,13 +105,8 @@ public partial class SelectionOverlayWindow : Window
         SelectionCompleted?.Invoke(this, deviceRect);
     }
 
-    private void Window_KeyDown(object sender, KeyEventArgs e)
+    private void Window_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.Key != Key.Escape)
-        {
-            return;
-        }
-
         _startPoint = null;
         Close();
         SelectionCancelled?.Invoke(this, EventArgs.Empty);

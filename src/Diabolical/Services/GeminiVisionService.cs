@@ -10,7 +10,7 @@ namespace Diabolical.Services;
 /// Sends a cropped item-tooltip screenshot to Gemini 2.5 Flash and parses the strict-JSON
 /// response into a ParsedItemExtraction. No SDK — direct REST call per CLAUDE.md.
 /// </summary>
-public class GeminiVisionService
+public class GeminiVisionService : IVisionService
 {
     private const string Model = "gemini-2.5-flash";
     private const string ApiBaseUrl = "https://generativelanguage.googleapis.com/v1beta/models";
@@ -89,42 +89,33 @@ public class GeminiVisionService
                 return ItemExtractionResult.Fail("Gemini response contained no text content.");
             }
 
-            var itemJson = StripMarkdownFences(rawText);
-            try
-            {
-                var item = JsonSerializer.Deserialize<ParsedItemExtraction>(itemJson);
-                if (item is null)
-                {
-                    return ItemExtractionResult.Fail("Gemini's extracted item JSON deserialized to null.");
-                }
-
-                return ItemExtractionResult.Ok(item);
-            }
-            catch (JsonException ex)
-            {
-                return ItemExtractionResult.Fail($"Gemini's extracted item was not valid JSON: {ex.Message}\nRaw text: {rawText}");
-            }
+            return ExtractionJsonParser.ParseItemJson(rawText, "Gemini");
         }
     }
 
-    private static string StripMarkdownFences(string text)
+    public async Task<VisionAvailabilityResult> CheckAvailabilityAsync(CancellationToken cancellationToken = default)
     {
-        var trimmed = text.Trim();
-        if (!trimmed.StartsWith("```", StringComparison.Ordinal))
+        if (string.IsNullOrWhiteSpace(_apiKey))
         {
-            return trimmed;
+            return new VisionAvailabilityResult(false, "No Gemini API key configured.");
         }
 
-        var firstNewline = trimmed.IndexOf('\n');
-        trimmed = firstNewline >= 0 ? trimmed[(firstNewline + 1)..] : trimmed[3..];
-
-        var closingFenceIndex = trimmed.LastIndexOf("```", StringComparison.Ordinal);
-        if (closingFenceIndex >= 0)
+        try
         {
-            trimmed = trimmed[..closingFenceIndex];
-        }
+            var requestUrl = $"{ApiBaseUrl}?key={_apiKey}";
+            using var response = await _httpClient.GetAsync(requestUrl, cancellationToken);
+            if (response.IsSuccessStatusCode)
+            {
+                return new VisionAvailabilityResult(true);
+            }
 
-        return trimmed.Trim();
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            return new VisionAvailabilityResult(false, $"Gemini returned {(int)response.StatusCode} {response.ReasonPhrase}: {body}");
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            return new VisionAvailabilityResult(false, $"Request to Gemini failed: {ex.Message}");
+        }
     }
 
     private static string LoadDefaultPrompt() =>

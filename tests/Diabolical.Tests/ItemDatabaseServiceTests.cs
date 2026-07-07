@@ -59,13 +59,13 @@ public class ItemDatabaseServiceTests : IDisposable
             ItemPower = 750,
             SpecialEffects = new List<string> { "Aspect of Disobedience" }
         };
-        await _sut.UpsertItemAsync("MyBarb", "weapon1", weapon);
+        await _sut.UpsertItemAsync("MyBarb", "weapon", weapon);
 
         var reloaded = await _sut.LoadAsync("MyBarb");
 
         Assert.Equal(2, reloaded.Equipment.Count);
-        Assert.Equal("Rage of Harrogath", reloaded.Equipment["helm"].Name);
-        Assert.Equal("Windforce", reloaded.Equipment["weapon1"].Name);
+        Assert.Equal("Rage of Harrogath", Assert.Single(reloaded.Equipment["helm"]).Name);
+        Assert.Equal("Windforce", Assert.Single(reloaded.Equipment["weapon"]).Name);
         Assert.Equal("Barbarian", reloaded.Class);
     }
 
@@ -81,36 +81,115 @@ public class ItemDatabaseServiceTests : IDisposable
         var reloaded = await _sut.LoadAsync("MyBarb");
 
         Assert.Single(reloaded.Equipment);
-        Assert.Equal("Rage of Harrogath", reloaded.Equipment["helm"].Name);
+        Assert.Equal("Rage of Harrogath", Assert.Single(reloaded.Equipment["helm"]).Name);
     }
 
     [Fact]
-    public async Task RemoveItemAsync_ExistingSlot_RemovesOnlyThatSlot()
+    public async Task UpsertItemAsync_SecondDistinctWeapon_IsAddedAlongsideTheFirst()
+    {
+        var mainHand = new EquipmentItem { Name = "Windforce", Rarity = ItemRarity.Legendary, Quality = ItemQuality.Normal, ItemPower = 750 };
+        await _sut.UpsertItemAsync("MyRogue", "weapon", mainHand, characterClass: "Rogue");
+
+        var offHand = new EquipmentItem { Name = "Doombringer", Rarity = ItemRarity.Unique, Quality = ItemQuality.Ancestral, ItemPower = 800 };
+        await _sut.UpsertItemAsync("MyRogue", "weapon", offHand);
+
+        var reloaded = await _sut.LoadAsync("MyRogue");
+
+        Assert.Equal(2, reloaded.Equipment["weapon"].Count);
+        Assert.Contains(reloaded.Equipment["weapon"], i => i.Name == "Windforce");
+        Assert.Contains(reloaded.Equipment["weapon"], i => i.Name == "Doombringer");
+    }
+
+    [Fact]
+    public async Task UpsertItemAsync_RescanningSameNamedWeapon_UpdatesInPlaceInsteadOfAdding()
+    {
+        var original = new EquipmentItem { Name = "Windforce", Rarity = ItemRarity.Legendary, Quality = ItemQuality.Normal, ItemPower = 750 };
+        await _sut.UpsertItemAsync("MyRogue", "weapon", original, characterClass: "Rogue");
+
+        var retempered = new EquipmentItem { Name = "Windforce", Rarity = ItemRarity.Legendary, Quality = ItemQuality.Normal, ItemPower = 800 };
+        await _sut.UpsertItemAsync("MyRogue", "weapon", retempered);
+
+        var reloaded = await _sut.LoadAsync("MyRogue");
+
+        Assert.Equal(800, Assert.Single(reloaded.Equipment["weapon"]).ItemPower);
+    }
+
+    [Fact]
+    public async Task UpsertItemAsync_FourDistinctWeapons_AllFitBarbarianWeaponSwapCapacity()
+    {
+        var names = new[] { "Weapon A", "Weapon B", "Weapon C", "Weapon D" };
+        foreach (var name in names)
+        {
+            var weapon = new EquipmentItem { Name = name, Rarity = ItemRarity.Rare, Quality = ItemQuality.Normal, ItemPower = 700 };
+            await _sut.UpsertItemAsync("MyBarb", "weapon", weapon, characterClass: "Barbarian");
+        }
+
+        var reloaded = await _sut.LoadAsync("MyBarb");
+
+        Assert.Equal(4, reloaded.Equipment["weapon"].Count);
+        Assert.All(names, name => Assert.Contains(reloaded.Equipment["weapon"], i => i.Name == name));
+    }
+
+    [Fact]
+    public async Task UpsertItemAsync_FifthDistinctWeapon_EvictsTheOldestToStayAtCapacity()
+    {
+        foreach (var name in new[] { "Weapon A", "Weapon B", "Weapon C", "Weapon D" })
+        {
+            var weapon = new EquipmentItem { Name = name, Rarity = ItemRarity.Rare, Quality = ItemQuality.Normal, ItemPower = 700 };
+            await _sut.UpsertItemAsync("MyBarb", "weapon", weapon, characterClass: "Barbarian");
+        }
+
+        var fifth = new EquipmentItem { Name = "Weapon E", Rarity = ItemRarity.Rare, Quality = ItemQuality.Normal, ItemPower = 700 };
+        await _sut.UpsertItemAsync("MyBarb", "weapon", fifth);
+
+        var reloaded = await _sut.LoadAsync("MyBarb");
+
+        Assert.Equal(4, reloaded.Equipment["weapon"].Count);
+        Assert.DoesNotContain(reloaded.Equipment["weapon"], i => i.Name == "Weapon A");
+        Assert.Contains(reloaded.Equipment["weapon"], i => i.Name == "Weapon E");
+    }
+
+    [Fact]
+    public async Task RemoveItemAsync_ExistingItem_RemovesOnlyThatItem()
     {
         var helm = new EquipmentItem { Name = "Rage of Harrogath", Rarity = ItemRarity.Unique, Quality = ItemQuality.Ancestral, ItemPower = 800 };
         await _sut.UpsertItemAsync("MyBarb", "helm", helm, characterClass: "Barbarian");
 
         var weapon = new EquipmentItem { Name = "Windforce", Rarity = ItemRarity.Legendary, Quality = ItemQuality.Normal, ItemPower = 750 };
-        await _sut.UpsertItemAsync("MyBarb", "weapon1", weapon);
+        await _sut.UpsertItemAsync("MyBarb", "weapon", weapon);
 
-        var character = await _sut.RemoveItemAsync("MyBarb", "helm");
+        var character = await _sut.RemoveItemAsync("MyBarb", "helm", "Rage of Harrogath");
 
         Assert.Single(character.Equipment);
         Assert.False(character.Equipment.ContainsKey("helm"));
-        Assert.True(character.Equipment.ContainsKey("weapon1"));
+        Assert.True(character.Equipment.ContainsKey("weapon"));
 
         var reloaded = await _sut.LoadAsync("MyBarb");
         Assert.Single(reloaded.Equipment);
-        Assert.True(reloaded.Equipment.ContainsKey("weapon1"));
+        Assert.True(reloaded.Equipment.ContainsKey("weapon"));
     }
 
     [Fact]
-    public async Task RemoveItemAsync_MissingSlot_IsNoOp()
+    public async Task RemoveItemAsync_OneOfTwoWeapons_LeavesTheOtherInPlace()
+    {
+        var mainHand = new EquipmentItem { Name = "Windforce", Rarity = ItemRarity.Legendary, Quality = ItemQuality.Normal, ItemPower = 750 };
+        await _sut.UpsertItemAsync("MyRogue", "weapon", mainHand, characterClass: "Rogue");
+
+        var offHand = new EquipmentItem { Name = "Doombringer", Rarity = ItemRarity.Unique, Quality = ItemQuality.Ancestral, ItemPower = 800 };
+        await _sut.UpsertItemAsync("MyRogue", "weapon", offHand);
+
+        var character = await _sut.RemoveItemAsync("MyRogue", "weapon", "Windforce");
+
+        Assert.Equal("Doombringer", Assert.Single(character.Equipment["weapon"]).Name);
+    }
+
+    [Fact]
+    public async Task RemoveItemAsync_MissingItem_IsNoOp()
     {
         var helm = new EquipmentItem { Name = "Rage of Harrogath", Rarity = ItemRarity.Unique, Quality = ItemQuality.Ancestral, ItemPower = 800 };
         await _sut.UpsertItemAsync("MyBarb", "helm", helm, characterClass: "Barbarian");
 
-        var character = await _sut.RemoveItemAsync("MyBarb", "weapon1");
+        var character = await _sut.RemoveItemAsync("MyBarb", "weapon", "Windforce");
 
         Assert.Single(character.Equipment);
         Assert.True(character.Equipment.ContainsKey("helm"));
@@ -141,7 +220,7 @@ public class ItemDatabaseServiceTests : IDisposable
         Assert.Equal("Barbarian", root.GetProperty("class").GetString());
         Assert.True(root.TryGetProperty("lastUpdated", out _));
 
-        var helmElement = root.GetProperty("equipment").GetProperty("helm");
+        var helmElement = root.GetProperty("equipment").GetProperty("helm")[0];
         Assert.Equal("Rage of Harrogath", helmElement.GetProperty("name").GetString());
         Assert.Equal("Unique", helmElement.GetProperty("rarity").GetString());
         Assert.Equal("Ancestral", helmElement.GetProperty("quality").GetString());

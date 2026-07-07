@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
+  <!--
+    Diabolical's global hotkey (RegisterHotKey) won't fire while a higher-integrity-level
+    window has focus (Windows' UIPI blocks the delivery) — and Diablo 4 runs elevated.
+    Requesting administrator here keeps Diabolical at the same integrity level so the
+    hotkey works while the game has focus, not just while Diabolical itself is focused.
+  -->
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+    <security>
+      <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
+        <requestedExecutionLevel level="requireAdministrator" uiAccess="false" />
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+</assembly>

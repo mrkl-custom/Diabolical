@@ -5,25 +5,25 @@ using Diabolical.Services;
 
 namespace Diabolical.Tests;
 
-public class GeminiVisionServiceTests
+public class OllamaVisionServiceTests
 {
     private const string Prompt = "extract the item";
 
-    private static GeminiVisionService CreateService(HttpStatusCode statusCode, string responseBody)
+    private static OllamaVisionService CreateService(HttpStatusCode statusCode, string responseBody)
     {
         var handler = new FakeHttpMessageHandler(statusCode, responseBody);
         var httpClient = new HttpClient(handler);
-        return new GeminiVisionService(httpClient, apiKey: "test-key", prompt: Prompt);
+        return new OllamaVisionService(httpClient, baseUrl: "http://localhost:11434", model: "qwen3-vl:8b", prompt: Prompt);
     }
 
-    private static string WrapAsGeminiEnvelope(string innerText)
+    private static string WrapAsOllamaEnvelope(string innerText)
     {
         var escaped = innerText.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n");
         return $$"""
         {
-          "candidates": [
-            { "content": { "parts": [ { "text": "{{escaped}}" } ] } }
-          ]
+          "model": "qwen3-vl:8b",
+          "response": "{{escaped}}",
+          "done": true
         }
         """;
     }
@@ -36,7 +36,7 @@ public class GeminiVisionServiceTests
              "affixes":[{"text":"+40% Fury Generation","source":"Base"}],"specialEffects":[],
              "transfigured":false,"modifiable":true}
             """;
-        var service = CreateService(HttpStatusCode.OK, WrapAsGeminiEnvelope(itemJson));
+        var service = CreateService(HttpStatusCode.OK, WrapAsOllamaEnvelope(itemJson));
 
         var result = await service.ExtractItemAsync(new byte[] { 1, 2, 3 });
 
@@ -61,7 +61,7 @@ public class GeminiVisionServiceTests
              "affixes":[],"specialEffects":["Aspect of Disobedience"],"transfigured":false,"modifiable":true}
             """;
         var fenced = $"```json\n{itemJson}\n```";
-        var service = CreateService(HttpStatusCode.OK, WrapAsGeminiEnvelope(fenced));
+        var service = CreateService(HttpStatusCode.OK, WrapAsOllamaEnvelope(fenced));
 
         var result = await service.ExtractItemAsync(new byte[] { 1, 2, 3 });
 
@@ -74,13 +74,13 @@ public class GeminiVisionServiceTests
     [Fact]
     public async Task ExtractItemAsync_HttpErrorStatus_ReturnsFailureInsteadOfThrowing()
     {
-        var service = CreateService(HttpStatusCode.TooManyRequests, "rate limited");
+        var service = CreateService(HttpStatusCode.BadRequest, """{ "error": "model not found" }""");
 
         var result = await service.ExtractItemAsync(new byte[] { 1, 2, 3 });
 
         Assert.False(result.Success);
         Assert.Null(result.Item);
-        Assert.Contains("429", result.ErrorMessage);
+        Assert.Contains("400", result.ErrorMessage);
     }
 
     [Fact]
@@ -97,7 +97,7 @@ public class GeminiVisionServiceTests
     [Fact]
     public async Task ExtractItemAsync_ExtractedTextIsNotJson_ReturnsFailureInsteadOfThrowing()
     {
-        var service = CreateService(HttpStatusCode.OK, WrapAsGeminiEnvelope("Sorry, I can't read this image."));
+        var service = CreateService(HttpStatusCode.OK, WrapAsOllamaEnvelope("Sorry, I can't read this image."));
 
         var result = await service.ExtractItemAsync(new byte[] { 1, 2, 3 });
 
@@ -106,9 +106,9 @@ public class GeminiVisionServiceTests
     }
 
     [Fact]
-    public async Task ExtractItemAsync_NoCandidates_ReturnsFailureInsteadOfThrowing()
+    public async Task ExtractItemAsync_EmptyResponseField_ReturnsFailureInsteadOfThrowing()
     {
-        var service = CreateService(HttpStatusCode.OK, """{ "candidates": [] }""");
+        var service = CreateService(HttpStatusCode.OK, """{ "model": "qwen3-vl:8b", "response": "", "done": true }""");
 
         var result = await service.ExtractItemAsync(new byte[] { 1, 2, 3 });
 

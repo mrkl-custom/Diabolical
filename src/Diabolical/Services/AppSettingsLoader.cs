@@ -18,7 +18,7 @@ public static class AppSettingsLoader
         if (!File.Exists(path))
         {
             throw new FileNotFoundException(
-                $"{FileName} not found at repo root. Copy appsettings.example.json to {FileName} and fill in your Gemini API key.",
+                $"{FileName} not found at repo root. Copy appsettings.example.json to {FileName} and configure your vision provider.",
                 path);
         }
 

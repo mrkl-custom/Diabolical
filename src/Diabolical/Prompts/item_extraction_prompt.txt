@@ -7,11 +7,12 @@ commentary, no explanation before or after — just the JSON.
 
 Output schema:
 {
-  "slot": string,       // inferred equipment slot, one of:
+  "slot": string,       // inferred equipment category, one of:
                          // "helm", "chest", "gloves", "pants", "boots",
-                         // "weapon1", "weapon2", "ring1", "ring2",
-                         // "amulet". If unclear, make your best guess
-                         // based on item type.
+                         // "weapon", "ring", "amulet". A tooltip alone
+                         // can't reveal which physical slot (e.g. which
+                         // weapon or ring hand) an item occupies, so use
+                         // the category only — don't guess a number.
   "name": string,
   "rarity": string,      // one of: "Common", "Magic", "Rare", "Legendary",
                          // "Unique", "Mythic"

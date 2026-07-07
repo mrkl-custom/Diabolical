@@ -32,7 +32,10 @@ public class ScreenCaptureService : IDisposable
 
     /// <summary>
     /// Opens the drag-select overlay. Exposed directly (not just via the hotkey) so it can
-    /// be triggered from a button for manual testing.
+    /// be triggered from a button for manual testing. Deliberately just Show(), not
+    /// Activate() — the overlay is WS_EX_NOACTIVATE (see SelectionOverlayWindow) so it never
+    /// steals focus from the game, which would otherwise hide the item tooltip we're trying
+    /// to capture.
     /// </summary>
     public void BeginCapture()
     {
@@ -40,7 +43,6 @@ public class ScreenCaptureService : IDisposable
         overlay.SelectionCompleted += (_, region) => CaptureCompleted?.Invoke(CaptureRegion(region));
         overlay.SelectionCancelled += (_, _) => CaptureCancelled?.Invoke();
         overlay.Show();
-        overlay.Activate();
     }
 
     private static byte[] CaptureRegion(Int32Rect region)

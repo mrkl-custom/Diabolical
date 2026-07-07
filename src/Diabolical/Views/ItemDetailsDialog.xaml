@@ -1,0 +1,62 @@
+<Window x:Class="Diabolical.Views.ItemDetailsDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Item Details" Height="560" Width="420"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="2*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="1*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="90"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <TextBlock Text="Slot" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center"/>
+        <TextBlock x:Name="SlotText" Grid.Row="0" Grid.Column="1" Margin="0,4" VerticalAlignment="Center"/>
+
+        <TextBlock Text="Name" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center"/>
+        <TextBlock x:Name="NameText" Grid.Row="1" Grid.Column="1" Margin="0,4" VerticalAlignment="Center" TextWrapping="Wrap"/>
+
+        <TextBlock Text="Rarity" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center"/>
+        <TextBlock x:Name="RarityText" Grid.Row="2" Grid.Column="1" Margin="0,4" VerticalAlignment="Center"/>
+
+        <TextBlock Text="Quality" Grid.Row="3" Grid.Column="0" VerticalAlignment="Center"/>
+        <TextBlock x:Name="QualityText" Grid.Row="3" Grid.Column="1" Margin="0,4" VerticalAlignment="Center"/>
+
+        <TextBlock Text="Item Power" Grid.Row="4" Grid.Column="0" VerticalAlignment="Center"/>
+        <TextBlock x:Name="ItemPowerText" Grid.Row="4" Grid.Column="1" Margin="0,4" VerticalAlignment="Center"/>
+
+        <TextBlock x:Name="FlagsText" Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,4"/>
+
+        <TextBlock Text="Affixes" Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,8,0,4"/>
+        <DataGrid x:Name="AffixesDataGrid" Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="2"
+                  AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                  HeadersVisibility="Column" GridLinesVisibility="Horizontal" Margin="0,0,0,8">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Text" Width="*" Binding="{Binding Text}"/>
+                <DataGridTextColumn Header="Source" Width="110" Binding="{Binding Source}"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <TextBlock Text="Special Effects" Grid.Row="8" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,4"/>
+        <TextBox x:Name="SpecialEffectsTextBox" Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="2"
+                 IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
+
+        <StackPanel Grid.Row="10" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal"
+                    HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button x:Name="CopyJsonButton" Content="Copy JSON" Width="100" Margin="0,0,8,0" Click="CopyJsonButton_Click"/>
+            <Button x:Name="CloseButton" Content="Close" Width="90" IsDefault="True" IsCancel="True" Click="CloseButton_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

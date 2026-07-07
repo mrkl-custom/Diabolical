@@ -122,6 +122,30 @@ Diabolical/
         └── GeminiVisionServiceTests.cs
 ```
 
+## Deployment
+For running a standalone "production" copy independent of the dev
+checkout (so active development in VS Code isn't interrupted):
+
+```
+dotnet publish src/Diabolical/Diabolical.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true
+```
+
+Framework-dependent, not self-contained — requires the .NET 8 Desktop
+Runtime installed on the machine running it, but produces a much smaller
+output (~a few MB vs. ~160MB self-contained). Does not reduce runtime
+memory usage (the CLR + WPF stack still loads into the process either
+way) — this is a disk-footprint choice, not a memory one.
+
+Copy the resulting `publish/` output to a separate folder outside the
+repo, alongside its own `appsettings.local.json` and `data/characters/`.
+`RepoPaths.FindRepoRoot()` already supports this with no code changes —
+it walks up looking for `Diabolical.sln`, and falls back to the exe's own
+directory when none is found, which is exactly where the standalone
+copy's config/data live.
+
+Don't run the dev build and a standalone copy simultaneously — both
+register the same global hotkey, and the second instance will fail.
+
 ## Config & Secrets
 - Gemini API key lives in `appsettings.local.json`, gitignored.
 - Check in `appsettings.example.json` showing the expected shape, no real key.
@@ -161,7 +185,9 @@ Diabolical/
 - **Storage: one JSON file per character**, stored under
   `data/characters/{characterName}.json`, matching the schema above.
   `ItemDatabaseService` reads/writes/merges against a single character's
-  file at a time.
+  file at a time, and also supports removing a single equipment slot
+  (for the equipment list's remove action) without touching the rest
+  of the file.
 
 ## Open Decisions (not yet finalized)
 - **Talisman system (Seals + Charms) is out of scope for now.** It's a

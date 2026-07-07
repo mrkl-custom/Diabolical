@@ -22,7 +22,7 @@ public class ModelSerializationTests
         Assert.Equal(new DateTime(2026, 7, 6, 0, 0, 0, DateTimeKind.Utc), character.LastUpdated.ToUniversalTime());
 
         Assert.True(character.Equipment.ContainsKey("helm"));
-        var helm = character.Equipment["helm"];
+        var helm = Assert.Single(character.Equipment["helm"]);
         Assert.Equal("Rage of Harrogath", helm.Name);
         Assert.Equal(ItemRarity.Unique, helm.Rarity);
         Assert.Equal(ItemQuality.Ancestral, helm.Quality);
@@ -33,12 +33,12 @@ public class ModelSerializationTests
         Assert.False(helm.Transfigured);
         Assert.True(helm.Modifiable);
 
-        Assert.True(character.Equipment.ContainsKey("weapon1"));
-        var weapon1 = character.Equipment["weapon1"];
-        Assert.Equal(ItemRarity.Legendary, weapon1.Rarity);
-        Assert.Equal(ItemQuality.Normal, weapon1.Quality);
-        Assert.Equal(AffixSource.Tempered, weapon1.Affixes[1].Source);
-        Assert.Equal("Aspect of Disobedience", Assert.Single(weapon1.SpecialEffects));
+        Assert.True(character.Equipment.ContainsKey("weapon"));
+        var weapon = Assert.Single(character.Equipment["weapon"]);
+        Assert.Equal(ItemRarity.Legendary, weapon.Rarity);
+        Assert.Equal(ItemQuality.Normal, weapon.Quality);
+        Assert.Equal(AffixSource.Tempered, weapon.Affixes[1].Source);
+        Assert.Equal("Aspect of Disobedience", Assert.Single(weapon.SpecialEffects));
     }
 
     [Fact]

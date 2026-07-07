@@ -3,33 +3,37 @@
   "class": "Barbarian",
   "lastUpdated": "2026-07-06T00:00:00Z",
   "equipment": {
-    "helm": {
-      "name": "Rage of Harrogath",
-      "rarity": "Unique",
-      "quality": "Ancestral",
-      "itemPower": 800,
-      "affixes": [
-        { "text": "+40% Fury Generation", "source": "Base" },
-        { "text": "+20% Damage while Berserking", "source": "Base" }
-      ],
-      "specialEffects": [
-        "Every 8 seconds, your next Core Skill deals 500% increased damage."
-      ],
-      "transfigured": false,
-      "modifiable": true
-    },
-    "weapon1": {
-      "name": "Windforce",
-      "rarity": "Legendary",
-      "quality": "Normal",
-      "itemPower": 750,
-      "affixes": [
-        { "text": "+15% Attack Speed", "source": "Base" },
-        { "text": "+30% Vulnerable Damage +[20 - 30]%", "source": "Tempered" }
-      ],
-      "specialEffects": ["Aspect of Disobedience"],
-      "transfigured": false,
-      "modifiable": true
-    }
+    "helm": [
+      {
+        "name": "Rage of Harrogath",
+        "rarity": "Unique",
+        "quality": "Ancestral",
+        "itemPower": 800,
+        "affixes": [
+          { "text": "+40% Fury Generation", "source": "Base" },
+          { "text": "+20% Damage while Berserking", "source": "Base" }
+        ],
+        "specialEffects": [
+          "Every 8 seconds, your next Core Skill deals 500% increased damage."
+        ],
+        "transfigured": false,
+        "modifiable": true
+      }
+    ],
+    "weapon": [
+      {
+        "name": "Windforce",
+        "rarity": "Legendary",
+        "quality": "Normal",
+        "itemPower": 750,
+        "affixes": [
+          { "text": "+15% Attack Speed", "source": "Base" },
+          { "text": "+30% Vulnerable Damage +[20 - 30]%", "source": "Tempered" }
+        ],
+        "specialEffects": ["Aspect of Disobedience"],
+        "transfigured": false,
+        "modifiable": true
+      }
+    ]
   }
 }

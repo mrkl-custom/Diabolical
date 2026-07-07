@@ -12,8 +12,7 @@
         MouseLeftButtonDown="Window_MouseLeftButtonDown"
         MouseMove="Window_MouseMove"
         MouseLeftButtonUp="Window_MouseLeftButtonUp"
-        KeyDown="Window_KeyDown"
-        Loaded="Window_Loaded">
+        MouseRightButtonDown="Window_MouseRightButtonDown">
     <Canvas x:Name="RootCanvas">
         <Rectangle x:Name="SelectionRectangle"
                    Stroke="DeepSkyBlue"

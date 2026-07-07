@@ -14,10 +14,12 @@ public class CharacterEquipment
     public DateTime LastUpdated { get; set; }
 
     /// <summary>
-    /// Keyed by equipment slot (e.g. "helm", "weapon1") to match the JSON schema —
-    /// slots aren't a fixed set (dual-wield, rings, etc.), so a dictionary serializes
-    /// cleanly without a property per possible slot.
+    /// Keyed by equipment category (e.g. "helm", "weapon", "ring"). Values are lists rather
+    /// than single items because a tooltip screenshot alone never reveals which physical
+    /// slot an item occupies (e.g. weapon1 vs weapon2) — only how many of that category can
+    /// be equipped. Single-instance categories (helm, chest, ...) hold at most one entry;
+    /// "weapon" and "ring" can hold up to two. See ItemDatabaseService for the merge rules.
     /// </summary>
     [JsonPropertyName("equipment")]
-    public Dictionary<string, EquipmentItem> Equipment { get; set; } = new();
+    public Dictionary<string, List<EquipmentItem>> Equipment { get; set; } = new();
 }
