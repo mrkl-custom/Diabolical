@@ -9,12 +9,18 @@
     <RootNamespace>Diabolical</RootNamespace>
     <AssemblyName>Diabolical</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Resources\mrkl.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <None Include="Prompts\item_extraction_prompt.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Resources\mrkl.ico" />
+    <Resource Include="Resources\diabolical.jpg" />
   </ItemGroup>
 
   <ItemGroup>

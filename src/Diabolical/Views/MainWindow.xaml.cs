@@ -24,6 +24,7 @@ public partial class MainWindow : Window
 
     private readonly HotkeyManager? _hotkeyManager;
     private readonly ScreenCaptureService? _captureService;
+    private readonly QuickCopyService? _quickCopyService;
     private readonly IVisionService? _visionService;
     private readonly ItemDatabaseService _databaseService = new();
     private readonly DispatcherTimer _providerStatusTimer;
@@ -53,7 +54,12 @@ public partial class MainWindow : Window
             _captureService.CaptureCompleted += OnCaptureCompleted;
             _captureService.CaptureCancelled += OnCaptureCancelled;
             _visionService = VisionServiceFactory.Create(settings);
-            AppendStatus($"Hotkey {settings.Hotkey.Modifiers}+{settings.Hotkey.Key} registered. Ready to capture.");
+            _quickCopyService = new QuickCopyService(_hotkeyManager, settings.QuickCopyHotkey, _visionService);
+            _quickCopyService.StatusChanged += AppendStatus;
+            AppendStatus(
+                $"Hotkey {settings.Hotkey.Modifiers}+{settings.Hotkey.Key} registered. " +
+                $"Quick Copy hotkey {settings.QuickCopyHotkey.Modifiers}+{settings.QuickCopyHotkey.Key} registered. " +
+                "Ready to capture.");
         }
         catch (Exception ex) when (ex is FileNotFoundException or InvalidOperationException)
         {
@@ -298,7 +304,6 @@ public partial class MainWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         _providerStatusTimer.Stop();
-        _captureService?.Dispose();
         _hotkeyManager?.Dispose();
         base.OnClosed(e);
     }

@@ -26,6 +26,13 @@ over robustness, scalability, or high-availability concerns.
    clipboard or to a standalone file, for handing off to an AI assistant
    as context. This is the actual point of the app, so it should be a
    one-click/one-command action, not buried in a menu.
+7. **Quick Copy (alternate flow)** — A second global hotkey drag-selects
+   a tooltip the same way as the main capture flow, sends it to the same
+   configured vision provider, and copies the raw extracted item JSON
+   straight to the clipboard. No Review/Edit dialog, no character context,
+   no save to `data/characters/`. This is a throwaway lookup for pasting a
+   single item into an AI assistant mid-session — not part of gear
+   tracking, and doesn't touch `ItemDatabaseService`.
 
 No fallback LLM providers needed (hobby scope) — if Gemini's free tier is
 rate-limited, just wait and retry.
@@ -149,6 +156,10 @@ register the same global hotkey, and the second instance will fail.
 ## Config & Secrets
 - Gemini API key lives in `appsettings.local.json`, gitignored.
 - Check in `appsettings.example.json` showing the expected shape, no real key.
+- `appsettings.local.json` now has a second hotkey block, `QuickCopyHotkey`
+  (same `Modifiers`/`Key` shape as `Hotkey`), for the Quick Copy flow.
+  `appsettings.example.json` should default it to something that doesn't
+  collide with `Hotkey` (e.g. `Ctrl+Alt+C` alongside `Ctrl+Alt+D`).
 - `.gitignore` should include:
   ```
   bin/
@@ -188,6 +199,20 @@ register the same global hotkey, and the second instance will fail.
   file at a time, and also supports removing a single equipment slot
   (for the equipment list's remove action) without touching the rest
   of the file.
+- **HotkeyManager generalized to support multiple registered hotkeys**
+  (previously supported exactly one, via a hardcoded id/event pair).
+  Needed to add the Quick Copy hotkey without touching the existing
+  capture hotkey's registration.
+- **Quick Copy is implemented as an independent service, not a
+  modification of ScreenCaptureService.** It reuses the same
+  SelectionOverlayWindow drag-select and the same IVisionService, but has
+  no character context and never touches ItemDatabaseService — keeping the
+  tracked-gear flow and the throwaway-lookup flow fully decoupled.
+- **Quick Copy's clipboard JSON uses the same shape as
+  ItemDatabaseService.SerializeItem** (slot inlined as a leading property
+  ahead of the item fields) — consistent formatting for anything handed to
+  an AI assistant as a standalone item, whether it came from the equipment
+  list or a quick lookup.
 
 ## Open Decisions (not yet finalized)
 - **Talisman system (Seals + Charms) is out of scope for now.** It's a

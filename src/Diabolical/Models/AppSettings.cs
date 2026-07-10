@@ -6,6 +6,7 @@ public class AppSettings
     public GeminiSettings Gemini { get; set; } = new();
     public OllamaSettings Ollama { get; set; } = new();
     public HotkeySettings Hotkey { get; set; } = new();
+    public HotkeySettings QuickCopyHotkey { get; set; } = new();
 
     /// <summary>
     /// When true, skips the review/edit confirmation on scanned items and the
