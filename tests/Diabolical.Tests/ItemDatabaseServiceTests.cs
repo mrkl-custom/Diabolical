@@ -295,7 +295,7 @@ public class ItemDatabaseServiceTests : IDisposable
             Rarity = ItemRarity.Unique,
             Quality = ItemQuality.Ancestral,
             ItemPower = 800,
-            Affixes = new List<ItemAffix> { new() { Text = "+40% Fury Generation", Source = AffixSource.Base } },
+            Affixes = new List<ItemAffix> { new() { Text = "+40% Fury Generation" } },
             SpecialEffects = new List<string>(),
             Transfigured = false,
             Modifiable = true
@@ -316,7 +316,7 @@ public class ItemDatabaseServiceTests : IDisposable
         Assert.Equal("Unique", helmElement.GetProperty("rarity").GetString());
         Assert.Equal("Ancestral", helmElement.GetProperty("quality").GetString());
         Assert.Equal(800, helmElement.GetProperty("itemPower").GetInt32());
-        Assert.Equal("Base", helmElement.GetProperty("affixes")[0].GetProperty("source").GetString());
+        Assert.Equal("+40% Fury Generation", helmElement.GetProperty("affixes")[0].GetProperty("text").GetString());
         Assert.Equal(JsonValueKind.Array, helmElement.GetProperty("specialEffects").ValueKind);
         Assert.False(helmElement.GetProperty("transfigured").GetBoolean());
         Assert.True(helmElement.GetProperty("modifiable").GetBoolean());

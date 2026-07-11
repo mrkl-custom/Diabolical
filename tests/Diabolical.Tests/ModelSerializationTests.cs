@@ -28,8 +28,8 @@ public class ModelSerializationTests
         Assert.Equal(ItemRarity.Unique, helm.Rarity);
         Assert.Equal(ItemQuality.Ancestral, helm.Quality);
         Assert.Equal(800, helm.ItemPower);
+        Assert.Equal(29, helm.MasterworkingQuality);
         Assert.Equal(2, helm.Affixes.Count);
-        Assert.All(helm.Affixes, a => Assert.Equal(AffixSource.Base, a.Source));
         Assert.True(helm.Affixes[1].GreaterAffix);
         Assert.Single(helm.SpecialEffects);
         Assert.Empty(helm.Sockets);
@@ -40,8 +40,7 @@ public class ModelSerializationTests
         var weapon = Assert.Single(character.Equipment["weapon"]);
         Assert.Equal(ItemRarity.Legendary, weapon.Rarity);
         Assert.Equal(ItemQuality.Normal, weapon.Quality);
-        Assert.Equal(AffixSource.Implicit, weapon.Affixes[0].Source);
-        Assert.Equal(AffixSource.Tempered, weapon.Affixes[1].Source);
+        Assert.Equal(12, weapon.MasterworkingQuality);
         Assert.Equal("Aspect of Disobedience", Assert.Single(weapon.SpecialEffects));
         Assert.Equal("Empty Socket", Assert.Single(weapon.Sockets));
     }
@@ -69,16 +68,5 @@ public class ModelSerializationTests
 
         Assert.NotNull(item);
         Assert.Equal(ItemRarity.Unknown, item!.Rarity);
-    }
-
-    [Fact]
-    public void AffixSource_UnrecognizedValue_FallsBackToBaseInsteadOfThrowing()
-    {
-        const string json = """{"text":"+100 Strength","source":"Nonsense"}""";
-
-        var affix = JsonSerializer.Deserialize<ItemAffix>(json);
-
-        Assert.NotNull(affix);
-        Assert.Equal(AffixSource.Base, affix!.Source);
     }
 }

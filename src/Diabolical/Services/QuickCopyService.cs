@@ -11,7 +11,7 @@ namespace Diabolical.Services;
 /// </summary>
 public class QuickCopyService
 {
-    private readonly IVisionService _visionService;
+    private IVisionService _visionService;
 
     /// <summary>Fires with a human-readable status line, mirroring the main capture flow's status messages.</summary>
     public event Action<string>? StatusChanged;
@@ -27,6 +27,10 @@ public class QuickCopyService
         _visionService = visionService;
         hotkeyManager.Register(hotkeySettings, BeginQuickCopy);
     }
+
+    /// <summary>Repoints Quick Copy at a newly selected vision provider (see MainWindow's
+    /// provider dropdown) without needing to re-register the hotkey.</summary>
+    public void SetVisionService(IVisionService visionService) => _visionService = visionService;
 
     public void BeginQuickCopy()
     {

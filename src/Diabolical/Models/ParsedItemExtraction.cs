@@ -29,6 +29,9 @@ public class ParsedItemExtraction
     [JsonPropertyName("itemPower")]
     public int ItemPower { get; set; }
 
+    [JsonPropertyName("masterworkingQuality")]
+    public int MasterworkingQuality { get; set; }
+
     [JsonPropertyName("affixes")]
     public List<ItemAffix> Affixes { get; set; } = new();
 
@@ -51,6 +54,7 @@ public class ParsedItemExtraction
         Rarity = Rarity,
         Quality = Quality,
         ItemPower = ItemPower,
+        MasterworkingQuality = MasterworkingQuality,
         Affixes = Affixes,
         SpecialEffects = SpecialEffects,
         Sockets = Sockets,

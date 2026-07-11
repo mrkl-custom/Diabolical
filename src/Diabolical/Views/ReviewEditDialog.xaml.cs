@@ -31,7 +31,6 @@ public partial class ReviewEditDialog : Window
 
         RarityComboBox.ItemsSource = Enum.GetValues<ItemRarity>();
         QualityComboBox.ItemsSource = Enum.GetValues<ItemQuality>();
-        AffixSourceColumn.ItemsSource = Enum.GetValues<AffixSource>();
 
         SlotComboBox.ItemsSource = KnownSlots;
         SlotComboBox.Text = parsed.Slot;
@@ -40,13 +39,14 @@ public partial class ReviewEditDialog : Window
         RarityComboBox.SelectedItem = parsed.Rarity;
         QualityComboBox.SelectedItem = parsed.Quality;
         ItemPowerTextBox.Text = parsed.ItemPower.ToString();
+        MasterworkingQualityTextBox.Text = parsed.MasterworkingQuality.ToString();
         TransfiguredCheckBox.IsChecked = parsed.Transfigured;
         ModifiableCheckBox.IsChecked = parsed.Modifiable;
         SpecialEffectsTextBox.Text = string.Join(Environment.NewLine, parsed.SpecialEffects);
         SocketsTextBox.Text = string.Join(Environment.NewLine, parsed.Sockets);
 
         _affixRows = new ObservableCollection<AffixEditRow>(
-            parsed.Affixes.Select(a => new AffixEditRow { Text = a.Text, Source = a.Source, GreaterAffix = a.GreaterAffix }));
+            parsed.Affixes.Select(a => new AffixEditRow { Text = a.Text, GreaterAffix = a.GreaterAffix }));
         AffixesDataGrid.ItemsSource = _affixRows;
     }
 
@@ -79,6 +79,12 @@ public partial class ReviewEditDialog : Window
             return;
         }
 
+        if (!int.TryParse(MasterworkingQualityTextBox.Text, out var masterworkingQuality))
+        {
+            MessageBox.Show(this, "MW Quality must be a number.", "Diabolical", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
         Slot = SlotComboBox.Text.Trim();
         Item = new EquipmentItem
         {
@@ -87,9 +93,10 @@ public partial class ReviewEditDialog : Window
             Rarity = RarityComboBox.SelectedItem is ItemRarity rarity ? rarity : ItemRarity.Unknown,
             Quality = QualityComboBox.SelectedItem is ItemQuality quality ? quality : ItemQuality.Unknown,
             ItemPower = itemPower,
+            MasterworkingQuality = masterworkingQuality,
             Affixes = _affixRows
                 .Where(row => !string.IsNullOrWhiteSpace(row.Text))
-                .Select(row => new ItemAffix { Text = row.Text.Trim(), Source = row.Source, GreaterAffix = row.GreaterAffix })
+                .Select(row => new ItemAffix { Text = row.Text.Trim(), GreaterAffix = row.GreaterAffix })
                 .ToList(),
             SpecialEffects = SpecialEffectsTextBox.Text
                 .Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
@@ -113,6 +120,5 @@ public partial class ReviewEditDialog : Window
 public class AffixEditRow
 {
     public string Text { get; set; } = string.Empty;
-    public AffixSource Source { get; set; } = AffixSource.Base;
     public bool GreaterAffix { get; set; }
 }

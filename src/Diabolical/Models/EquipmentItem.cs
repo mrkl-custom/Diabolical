@@ -21,6 +21,15 @@ public class EquipmentItem
     [JsonPropertyName("itemPower")]
     public int ItemPower { get; set; }
 
+    /// <summary>
+    /// The tooltip's numeric "Quality" stat (masterworking quality) — a separate axis from
+    /// the Normal/Ancestral <see cref="Quality"/> field above, which shares the same word by
+    /// coincidence. Normally 0-25 (masterworking upgrade ranks), but Transfiguration can push
+    /// it higher, so no upper bound is enforced here.
+    /// </summary>
+    [JsonPropertyName("masterworkingQuality")]
+    public int MasterworkingQuality { get; set; }
+
     [JsonPropertyName("affixes")]
     public List<ItemAffix> Affixes { get; set; } = new();
 

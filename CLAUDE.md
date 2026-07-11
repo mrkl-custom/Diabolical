@@ -73,9 +73,10 @@ rate-limited, just wait and retry.
         "rarity": "Unique",
         "quality": "Ancestral",
         "itemPower": 800,
+        "masterworkingQuality": 25,
         "affixes": [
-          { "text": "+40% Fury Generation", "source": "Base", "greaterAffix": false },
-          { "text": "+180 Dexterity +[150 - 180] (Class Only)", "source": "Tempered", "greaterAffix": false }
+          { "text": "+40% Fury Generation", "greaterAffix": false },
+          { "text": "+180 Dexterity +[150 - 180] (Class Only)", "greaterAffix": false }
         ],
         "specialEffects": ["..."],
         "sockets": [],
@@ -98,24 +99,38 @@ Field notes:
   the tooltip had no such line.
 - `rarity`: `Common | Magic | Rare | Legendary | Unique | Mythic`
 - `quality`: `Normal | Ancestral` — separate axis from rarity
-- `affixes`: each entry has `text` (verbatim stat line), `source`
-  (`Base | Tempered | Transfigured | Implicit`), and `greaterAffix` (bool).
-  `source` distinguishes a roll's origin: `Implicit` is an inherent stat
-  line above an item's divider (a ring/amulet's flat resist line, an
-  armor piece's Armor value, a weapon's DPS block) — not a rolled affix;
-  `Tempered`/`Transfigured` cover Tempering and Transfiguration rolls,
-  which are distinct from the item's base roll. An Enchanted
-  (Occultist-rerolled) affix is still stored as `Base` — the reroll
-  doesn't change which slot it occupies, so it isn't a distinct source
-  value. `greaterAffix` marks a stat line carrying the sunburst Greater
-  Affix glyph in-game.
+- `masterworkingQuality`: the tooltip's numeric "Quality" stat shown near
+  Item Power (e.g. "29 (⊛ +25) Quality" -> `29`) — a completely separate
+  axis from `quality` (Normal/Ancestral) above, which shares the word
+  "Quality" only by coincidence. Normally `0`-`25` (Masterworking upgrade
+  ranks), but Transfiguration can push it higher, so no upper bound is
+  enforced or validated.
+- `affixes`: each entry has `text` (verbatim stat line, in tooltip order —
+  inherent lines, rolled affixes, tempered/transfigured lines, all of it)
+  and `greaterAffix` (bool, marks a sunburst Greater Affix glyph). There
+  is deliberately no "origin" field distinguishing Base/Tempered/
+  Transfigured/Implicit rolls — that distinction isn't reliably readable
+  from a screenshot alone (see Decisions Log), so it isn't tracked.
 - `specialEffects`: replaces a single `aspect` field. Holds zero entries
   (normal rares/magic items), one entry (a Legendary's imprinted aspect),
   or several (a Unique/Mythic's multiple passive effect paragraphs, or a
   Transfigured amulet's extra Legendary power via Kullean Tuning Prism)
-- `sockets`: one entry per socket, in order; `"Empty Socket"` for an
-  unfilled one, or the rune/gem name plus any runeword effect text for a
-  filled one, verbatim. Empty array if the item has no sockets.
+- `sockets`: one entry per socket, in order, verbatim. Socket capacity is
+  fixed by the game and category, not something the schema enforces:
+  gloves/boots never have sockets; amulet/ring hold 0-1; helm/chest/pants
+  and two-handed weapons/bows hold 0-2; one-handed weapons/Focus/Shield
+  hold 0-1. Not every eligible item actually has a socket added (the
+  Jeweler adds them one at a time via a Scattered Prism), so fewer than
+  the max is normal. A socket entry is one of: the literal `"Empty
+  Socket"`; a socketed Gem's resulting stat line with no gem name
+  attached (e.g. `"+250 Resistance to All Elements"`, a weapon Gem's
+  damage multiplier) — a 2-socket item can show the identical line twice,
+  one entry per socket, since Gems are independent per socket; or a
+  completed Runeword — only possible when both sockets of a 2-socket item
+  hold a matching Ritual+Invocation rune pair — as one combined `"<Name>
+  (<ratio>) - <Runeword Name>: <effect text>"` string representing both
+  sockets together. Gems and Runes share the same sockets (filling one
+  type clears the other), so an item never shows both at once.
 - `transfigured` / `modifiable`: tracks Horadric Cube crafting state —
   whether the item has been Transfigured, and whether it can still be
   modified (tempered/masterworked/enchanted/imprinted) or is locked
@@ -347,28 +362,76 @@ register the same global hotkeys, and the second instance will fail.
   else in the process — HTTP calls, clipboard, file dialogs/exports —
   also runs elevated; kept in check by sanitizing character-name input
   used as a file name and not crashing on malformed provider responses.
-- **Item model extended with `itemType`, `sockets`, `AffixSource.Implicit`,
-  and `ItemAffix.GreaterAffix`** (2026-07-11 tooltip-screenshot review,
+- **Item model extended with `itemType`, `sockets`, and
+  `ItemAffix.GreaterAffix`** (2026-07-11 tooltip-screenshot review,
   BACKLOG.md V1–V6). `itemType` captures the tooltip's type line verbatim
   so same-category items (esp. the 4-slot `weapon` category) don't
   serialize identically. `sockets: string[]` holds one entry per socket
   (`"Empty Socket"` or the rune/gem name + runeword effect text verbatim)
-  — previously dropped or leaked into `specialEffects`. `Implicit` was
-  added to `AffixSource` for inherent above-the-divider stat lines (flat
-  resist on rings/amulets, an armor piece's Armor value, a weapon's DPS
-  block) that are neither rolled affixes nor crafting-added rolls;
-  Enchanted (Occultist-rerolled) affixes stay `Base` rather than getting
-  their own source value, since a reroll doesn't change which slot the
-  affix occupies. `ItemAffix.GreaterAffix: bool` marks a line carrying
-  the sunburst Greater Affix glyph. The extraction prompt's Tempered
-  guidance was also corrected — bracketed roll ranges appear on every
-  affix line, not just Tempered ones, so the heuristic now keys off the
-  Tempered marker icon and the affix's position (after base affixes),
-  and the prompt's own worked example (previously mislabeling Melted
-  Heart of Selig's base affixes as Tempered) was fixed. The prompt also
-  gained an explicit ignore-list (flavor text, Sell Value, Durability,
-  Requires Level, Account Bound, expansion tags, Crafted/Armory Loadout
-  badges) so these don't leak into `specialEffects`.
+  — previously dropped or leaked into `specialEffects`. `ItemAffix.
+  GreaterAffix: bool` marks a line carrying the sunburst Greater Affix
+  glyph. The prompt also gained an explicit ignore-list (flavor text,
+  Sell Value, Durability, Requires Level, Account Bound, expansion tags,
+  Crafted/Armory Loadout badges) so these don't leak into
+  `specialEffects`. (This entry originally also added an `AffixSource`
+  origin field — see below for its removal.)
+- **Extraction prompt hardened against two real-world misextractions**
+  found via live captures (2026-07-11): (1) `quality` was being flipped to
+  `Ancestral` off the unrelated numeric "`<NN> (⊛ +MM) Quality`" roll-score
+  stat shown near Item Power this season — the field-name collision with
+  our own `quality` (Normal/Ancestral) confused the vision model, so the
+  prompt now says explicitly that `quality`/`rarity` must come only from
+  the literal words on the item's type line. (2) Socketed runewords (e.g.
+  "NeoOhm (200/600) - Graceful Trickery" plus its effect text) were being
+  dropped entirely instead of populating `sockets` — the prompt now
+  describes the socket block's concrete visual pattern and position
+  (after specialEffects, before footer metadata) and includes a worked
+  example. A third issue found in the same pass — an explicit red
+  "Unmodifiable" tag being ignored in favor of a default `true` — is why
+  `modifiable` guidance keys strictly off that tag's presence rather than
+  inferring from Transfigured/Tempers state.
+- **`AffixSource` (`Base | Tempered | Transfigured | Implicit`) removed
+  from `ItemAffix` entirely** (2026-07-11) — after using the app against
+  real tooltips, distinguishing an affix's origin (Base vs. Tempered vs.
+  Transfigured) turned out not to be reliably readable from a screenshot:
+  the marker-icon heuristic the prompt relied on (added in the entry
+  above) doesn't hold up in practice, and repeated attempts to refine it
+  weren't worth the complexity for a stat that "does not matter that
+  much" for build planning. `ItemAffix` now has only `text` and
+  `greaterAffix`; every stat line (implicit, rolled, tempered,
+  transfigured alike) is captured in tooltip order with no origin
+  classification. `Implicit`'s positional detection (above the item's
+  divider) was comparatively reliable, but it was removed too for
+  consistency — one field for "this is a stat line on the item," not a
+  partially-reliable taxonomy.
+- **`masterworkingQuality: int` added to `EquipmentItem`/`ParsedItemExtraction`**
+  (2026-07-11) to track the tooltip's numeric "Quality" stat (e.g. "29 (⊛
+  +25) Quality") as real data instead of ignoring it — it's the item's
+  Masterworking quality score, normally `0`-`25` but uncapped since
+  Transfiguration can push it higher (confirmed via a live Tuskhelm of
+  Joritz capture showing 29). This is a separate axis from the `quality`
+  field (Normal/Ancestral) despite the shared word "Quality" in-game; the
+  extraction prompt now calls out both fields by name to keep the vision
+  model from conflating them, since that exact confusion was the root
+  cause of the `Ancestral` misdetections fixed just above.
+- **Socket extraction guidance grounded in Diablo 4's actual socket rules**
+  (2026-07-11) after repeated icon-guessing attempts from screenshots
+  alone kept missing real sockets. Researched current-season mechanics:
+  socket capacity is fixed per category (gloves/boots never have sockets;
+  amulet/ring 0-1; helm/chest/pants and two-handed weapons/bows 0-2;
+  one-handed weapons/Focus/Shield 0-1), and a filled socket holds either
+  an independent Gem (bare resulting stat line, no name — e.g. a Skull
+  gem's weapon Physical Damage Multiplier) or, only on a 2-socket item,
+  a completed Runeword from a matching Ritual+Invocation rune pair (one
+  combined name+ratio+effect line covering both sockets). The prompt
+  now states these capacities explicitly per category so the model knows
+  how many socket-icon lines to look for instead of only whether to look,
+  and distinguishes the two content shapes (repeatable bare Gem lines vs.
+  one combined Runeword line) with worked examples for each. Schema
+  itself (`sockets: string[]`) didn't change — this was a prompt-accuracy
+  fix grounded in facts, not a data-shape fix. No code guarantees
+  vision-model reliability here; this raises the ceiling, it doesn't
+  eliminate misses.
 
 ## Open Decisions (not yet finalized)
 - **First-run `appsettings.local.json` setup** — manual copy-and-edit of

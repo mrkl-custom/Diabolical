@@ -26,42 +26,48 @@ Output schema:
                          // Quarterstaff"). Empty string if no such line
                          // is visible.
   "rarity": string,      // one of: "Common", "Magic", "Rare", "Legendary",
-                         // "Unique", "Mythic"
-  "quality": string,     // "Normal" or "Ancestral"
+                         // "Unique", "Mythic". Read this directly from the
+                         // literal rarity word(s) in the type line (the
+                         // same line "itemType" comes from), e.g. "Unique
+                         // Helm" -> "Unique", "Ancestral Legendary Chest"
+                         // -> "Legendary", "Mythic Unique Ring" ->
+                         // "Mythic". Do NOT infer "Mythic" from border
+                         // color/ornamentation alone — only use it if the
+                         // word "Mythic" literally appears in the type
+                         // line.
+  "quality": string,     // "Normal" or "Ancestral" — "Ancestral" ONLY if
+                         // the word "Ancestral" literally appears in the
+                         // type line (the same line "itemType"/"rarity"
+                         // come from); otherwise "Normal". Do NOT base
+                         // this on the separate numeric "<NN> (⊛ +MM)
+                         // Quality" stat shown near Item Power — that is
+                         // the item's Masterworking quality (see
+                         // "masterworkingQuality" below), an unrelated
+                         // per-item stat, not the Normal/Ancestral axis,
+                         // and its presence/value says nothing about
+                         // Ancestral status.
   "itemPower": number,
+  "masterworkingQuality": number, // the numeric "Quality" stat shown near
+                         // Item Power, e.g. "29 (⊛ +25) Quality" -> 29.
+                         // Use the TOTAL number shown (the one immediately
+                         // before the word "Quality"), not the
+                         // parenthetical bonus by itself. Normally 0-25,
+                         // but Transfiguration can push it higher — do
+                         // not cap or "correct" a value above 25, report
+                         // it exactly as shown. Use 0 if no such stat is
+                         // visible on the tooltip at all.
   "affixes": [
     {
       "text": string,    // the stat line, verbatim, including any
                          // bracketed range shown (e.g. "+180 Dexterity
-                         // +[150 - 180]") — every affix line shows a
-                         // bracketed roll range, so brackets alone are
-                         // NOT a signal of anything; see "source" below
-      "source": string,  // "Base", "Tempered", "Transfigured", or
-                         // "Implicit".
-                         // - "Implicit": inherent stat lines shown ABOVE
-                         //   the item's divider line (e.g. a ring/amulet's
-                         //   flat resistance line, an armor piece's
-                         //   "XXX Armor" value, a weapon's "X,XXX Damage
-                         //   Per Second" line and its damage/attack-speed
-                         //   sublines). These are not rolled affixes.
-                         // - "Tempered": identified by a DISTINCT bullet/
-                         //   marker icon (not by bracketed ranges — those
-                         //   appear on every line) and by position: they
-                         //   are listed after all base affixes, often
-                         //   paired with a small class-restriction recipe
-                         //   tag. If you cannot clearly identify the
-                         //   tempered marker icon, use "Base" instead —
-                         //   do not guess based on bracket presence alone.
-                         // - "Transfigured": an affix added by Horadric
-                         //   Cube Transfiguration; typically only present
-                         //   alongside a "Transfigured" tag elsewhere on
-                         //   the tooltip.
-                         // - A circular-arrows icon marks an Enchanted
-                         //   (Occultist-rerolled) affix — this is still a
-                         //   "Base" slot roll, just rerolled, so label it
-                         //   "Base", not "Tempered" or anything else.
-                         // If genuinely unsure between Base/Tempered,
-                         // default to "Base".
+                         // +[150 - 180]"). Capture every stat line on the
+                         // item this way — inherent lines above the
+                         // divider, rolled affixes, tempered lines,
+                         // transfigured lines, all of it — in the order
+                         // they appear. Don't try to classify where a
+                         // line came from; that distinction isn't
+                         // reliably visible in a screenshot and isn't
+                         // tracked.
       "greaterAffix": boolean // true if this line carries a sunburst
                          // glyph bullet (Greater Affix marker), false
                          // otherwise. The item name area may also show
@@ -78,19 +84,69 @@ Output schema:
                               // flavor text or footer metadata here — see
                               // the ignore list below.
   "sockets": string[],        // one entry per socket on the item, in
-                              // order. An empty socket is the literal
-                              // string "Empty Socket". A filled socket is
-                              // the rune/gem name plus any runeword text
-                              // shown when a rune pair completes a
-                              // runeword (e.g. "MoniTzic (100/200) -
-                              // Alacrity / Stampede" plus its effect
-                              // line), captured verbatim as one string.
-                              // Empty array if the item has no sockets.
+                              // order. How many sockets to look for is
+                              // fixed by the item's category — use this
+                              // to know how hard to look, not just
+                              // whether to look at all:
+                              //   - gloves, boots: NEVER have sockets.
+                              //     Don't scan these at all; always [].
+                              //   - amulet, ring: 0 or 1 socket.
+                              //   - helm, chest, pants: 0, 1, or 2
+                              //     sockets.
+                              //   - weapon: one-handed/Focus/Shield: 0 or
+                              //     1; two-handed/Bow (check "itemType"
+                              //     for "Two-Handed" or a bow-type
+                              //     weapon): 0, 1, or 2.
+                              // Not every eligible item actually has a
+                              // socket added, so absence is normal — but
+                              // for helm/chest/pants/2H-weapon/bow
+                              // specifically, deliberately check for TWO
+                              // socket-icon lines, not just one, before
+                              // settling on a shorter list.
+                              // Sockets hold one of two things, sharing
+                              // one small circular/gem-shaped bullet
+                              // icon distinct from the diamond affix
+                              // bullets and sunburst special-effect
+                              // bullets. This section sits AFTER the
+                              // main affixes/specialEffects block and
+                              // BEFORE any italic flavor-text quote or
+                              // footer metadata (Requires Level, Account
+                              // Bound, Sell Value, etc.) — it has no
+                              // heading, so it's easy to miss. Capture
+                              // verbatim as one string per socket:
+                              //  - unfilled: the literal "Empty Socket"
+                              //  - a socketed Gem: just its resulting
+                              //    stat line, with no gem name attached
+                              //    (e.g. "+250 Resistance to All
+                              //    Elements", "x22% Physical Damage
+                              //    Multiplier") — a 2-socket item can
+                              //    show this SAME line twice (one gem
+                              //    per socket); capture each occurrence
+                              //    as its own separate entry, don't
+                              //    merge or dedupe them
+                              //  - a completed Runeword (only possible
+                              //    when both of an item's 2 sockets are
+                              //    filled with a matching rune pair): one
+                              //    combined header line "<Name>
+                              //    (<ratio>) - <Runeword Name>" (e.g.
+                              //    "NeoOhm (200/600) - Graceful
+                              //    Trickery") plus its 1-3 line effect
+                              //    description (may end with a
+                              //    parenthetical like "(Overflow:
+                              //    ...)") — capture the header plus full
+                              //    effect text as ONE string (it
+                              //    represents both sockets together, so
+                              //    add only one "sockets" entry for it,
+                              //    not two)
   "transfigured": boolean,    // true if tooltip shows a "Transfigured"
                               // tag/indicator, false/unknown otherwise
-  "modifiable": boolean       // true unless tooltip indicates the item
-                              // is locked/unmodifiable; default true
-                              // if unclear
+  "modifiable": boolean       // false ONLY if the tooltip shows an
+                              // explicit "Unmodifiable" tag/box (usually
+                              // highlighted in red near the footer); true
+                              // in every other case, including items that
+                              // are Transfigured or show a "Tempers: X/Y"
+                              // counter — those don't imply unmodifiable
+                              // by themselves, only the explicit tag does
 }
 
 Rules:
@@ -109,30 +165,174 @@ Rules:
   are fine to keep inline within an affix's own text, but never extracted
   as their own entry), "Unique Equipped", expansion tags ("Vessel of
   Hatred Item", "Lord of Hatred Item"), a "Crafted" badge, and an
-  "Armory Loadout" tag. The only footer-area content worth capturing at
-  all is a sockets line, which goes in "sockets", not "specialEffects".
+  "Armory Loadout" tag. The numeric "<NN> (⊛ +MM) Quality" line near Item
+  Power is NOT ignored — it goes in "masterworkingQuality" above, just
+  never in "quality" (Normal/Ancestral) or "specialEffects". The only
+  footer-area content worth capturing at all is a sockets section, which
+  goes in "sockets", not "specialEffects".
 
 Example output:
 {
   "slot": "amulet",
   "name": "Melted Heart of Selig",
-  "itemType": "Amulet",
+  "itemType": "Ancestral Mythic Unique Amulet",
   "rarity": "Mythic",
   "quality": "Ancestral",
   "itemPower": 900,
+  "masterworkingQuality": 25,
   "affixes": [
-    { "text": "+230 All Resist", "source": "Implicit", "greaterAffix": false },
-    { "text": "+180 Dexterity +[150 - 180] (Class Only)", "source": "Base", "greaterAffix": false },
-    { "text": "x28% Vulnerable Damage Multiplier [16 - 28]%", "source": "Base", "greaterAffix": true },
-    { "text": "+630 Cold Resistance [524 - 630]", "source": "Base", "greaterAffix": false },
-    { "text": "20.0% Resource Generation [20.0]%", "source": "Base", "greaterAffix": false }
+    { "text": "288 All Resist", "greaterAffix": false },
+    { "text": "+225 Dexterity +[150 - 180] (Only)", "greaterAffix": false },
+    { "text": "x35% Vulnerable Damage Multiplier [16 - 28]%", "greaterAffix": true },
+    { "text": "+787 Cold Resistance [524 - 630]", "greaterAffix": false },
+    { "text": "35.0% Resource Generation [20.0]%", "greaterAffix": false },
+    { "text": "9.0% Cooldown Reduction", "greaterAffix": false }
   ],
   "specialEffects": [
-    "Lucky Hit: Up to a 15% Chance to Restore +15 Primary Resource",
-    "Damage is dealt to your Primary Resource before Life and damage taken this way is drastically reduced. Your Primary Resource is doubled but Maximum Life is reduced by 75%.",
-    "When there are at least 5 Close enemies, Stun them for 7 [4 - 7] seconds. Can only occur once every 20 seconds."
+    "Damage is dealt to your Primary Resource before Life and damage taken this way is drastically reduced.",
+    "Your Primary Resource is doubled but Maximum Life is reduced by 75%. Your Shout Skill effect durations are increased by 45% [30 - 45]% and Weaken enemies for 5 seconds."
   ],
-  "sockets": [],
+  "sockets": ["+250 Resistance to All Elements"],
+  "transfigured": true,
+  "modifiable": true
+}
+Note: "+250 Resistance to All Elements" appeared after the special
+effects with its own socket-bullet icon (not a diamond affix bullet) —
+a single filled socket with a bare stat bonus, no rune name attached.
+It is easy to mistake this for a continuation of the special effects
+or an implicit affix; check specifically for the distinct bullet icon.
+
+Second example, showing a socketed runeword, a non-Ancestral item, and an
+unmodifiable item:
+{
+  "slot": "gloves",
+  "name": "Gohr's Devastating Grips",
+  "itemType": "Unique Gloves",
+  "rarity": "Unique",
+  "quality": "Normal",
+  "itemPower": 850,
+  "masterworkingQuality": 25,
+  "affixes": [
+    { "text": "+199 Strength +[150 - 180]", "greaterAffix": false },
+    { "text": "x72% Critical Strike Damage Multiplier [26 - 50]%", "greaterAffix": true }
+  ],
+  "specialEffects": [
+    "Whirlwind deals 80% [75 - 90]% increased damage and pulls enemies to you every 2 seconds."
+  ],
+  "sockets": [
+    "NeoOhm (200/600) - Graceful Trickery: Avoid health damage while fighting for 2 seconds. (3 times) Invoke the Rogue's Concealment Skill for 5 seconds, gaining Movement Speed, Unstoppable, and Stealth. (Overflow: Increased Duration)"
+  ],
+  "transfigured": false,
+  "modifiable": false
+}
+Note: this item's type line was "Unique Gloves" (no "Ancestral" word), so
+quality is "Normal" even though a numeric "25 (⊛ +25) Quality" score was
+also visible near Item Power — that score is masterworkingQuality: 25, a
+separate stat. The footer showed an explicit "Unmodifiable" tag, so
+modifiable is false.
+
+Third example, showing masterworkingQuality pushed above the normal 0-25
+range by Transfiguration:
+{
+  "slot": "helm",
+  "name": "Tuskhelm of Joritz the Mighty",
+  "itemType": "Unique Helm",
+  "rarity": "Unique",
+  "quality": "Normal",
+  "itemPower": 850,
+  "masterworkingQuality": 29,
+  "affixes": [
+    { "text": "+111 Strength +[83 - 99]", "greaterAffix": false },
+    { "text": "+24 Maximum Resource [10 - 15]", "greaterAffix": false },
+    { "text": "+18.7% Fortify Generation [10.0 - 15.0]%", "greaterAffix": false },
+    { "text": "6.5% Resource Cost Reduction [4.0 - 6.0]%", "greaterAffix": false },
+    { "text": "+4 Item Quality [1 - 15]", "greaterAffix": false }
+  ],
+  "specialEffects": [
+    "When you gain Berserking while already Berserk, you become more enraged granting 48%[x] [40 - 50]% increased damage, 6 Fury per second, and 10% Cooldown Reduction."
+  ],
+  "sockets": [
+    "NeoOhm (200/600) - Graceful Trickery: Avoid health damage while fighting for 2 seconds. (3 times) Invoke the Rogue's Concealment Skill for 5 seconds, gaining Movement Speed, Unstoppable, and Stealth. (Overflow: Increased Duration)"
+  ],
+  "transfigured": true,
+  "modifiable": true
+}
+Note: the tooltip showed "29 (⊛ +25) Quality" — report the total, 29,
+verbatim even though it exceeds the normal 0-25 range; this item's
+Transfigured tag is why. This item also has its own "+4 Item Quality
+[1 - 15]" affix line — that's a real rolled affix (capture it normally
+in "affixes" like any other stat line), separate from the
+"masterworkingQuality" header stat.
+
+Fourth example, showing a two-handed weapon with both sockets filled by
+Gems (not a Runeword — no name/ratio, just each Gem's resulting stat
+line repeated once per socket):
+{
+  "slot": "weapon",
+  "name": "Bonebreaker of Channeling",
+  "itemType": "Ancestral Legendary Two-Handed Mace (Bludgeoning)",
+  "rarity": "Legendary",
+  "quality": "Ancestral",
+  "itemPower": 900,
+  "masterworkingQuality": 25,
+  "affixes": [
+    { "text": "4,482 Damage Per Second", "greaterAffix": false },
+    { "text": "+374 Weapon Damage [230 - 383]", "greaterAffix": false },
+    { "text": "x30% All Damage Multiplier", "greaterAffix": false },
+    { "text": "x55% Critical Strike Damage Multiplier [26 - 50]%", "greaterAffix": false },
+    { "text": "24.5% Resource Cost Reduction [12.0 - 14.0]%", "greaterAffix": false },
+    { "text": "+120% Physical Damage", "greaterAffix": false }
+  ],
+  "specialEffects": [
+    "While channeling a Skill, all damage is increased by 136%[x] [100 - 140]%."
+  ],
+  "sockets": [
+    "x22% Physical Damage Multiplier",
+    "x22% Physical Damage Multiplier"
+  ],
   "transfigured": false,
   "modifiable": true
 }
+Note: this is a two-handed weapon, so it can have up to 2 sockets — both
+were filled here, each with its own Gem (Skull, which gives a Physical
+Damage Multiplier when socketed in a weapon), shown as two identical
+"x22% Physical Damage Multiplier" lines with no name or ratio attached.
+These are two separate socketed Gems, not a duplicate affix and not a
+Runeword — capture each occurrence as its own "sockets" entry rather
+than merging or dropping them.
+
+Fifth example, showing an empty socket sitting between the special
+effects and an italic flavor-text quote:
+{
+  "slot": "ring",
+  "name": "Ring of Red Furor",
+  "itemType": "Unique Ring",
+  "rarity": "Unique",
+  "quality": "Normal",
+  "itemPower": 850,
+  "masterworkingQuality": 0,
+  "affixes": [
+    { "text": "118 All Resist (-10% Toughness)", "greaterAffix": false },
+    { "text": "+87 Strength +[83 - 99]", "greaterAffix": false },
+    { "text": "x13% Critical Strike Damage Multiplier [13 - 25]%", "greaterAffix": false },
+    { "text": "4.0% Resource Cost Reduction [4.0 - 6.0]%", "greaterAffix": false },
+    { "text": "6.0% Cooldown Reduction [5.0 - 8.0]%", "greaterAffix": false }
+  ],
+  "specialEffects": [
+    "After spending 100 Fury within 5 seconds, your next non-Channeled Core or Weapon Mastery Skill Cast within 5 seconds is a guaranteed Critical Strike and deals 51%[x] [50 - 60]% bonus Critical Strike Damage."
+  ],
+  "sockets": ["Empty Socket"],
+  "transfigured": false,
+  "modifiable": true
+}
+Note: masterworkingQuality is 0 because no numeric "Quality" stat was
+shown on this tooltip at all — not every item displays one. "Empty
+Socket" appeared right after the special effect and before the italic
+flavor-text quote; check that position specifically since nothing else
+on the tooltip announces a sockets section.
+
+A truncated tooltip (a "Scroll Down" indicator at the bottom) means
+content below the fold is not visible in the screenshot and cannot be
+extracted — but content ABOVE the fold, including a sockets line, is
+still fully visible and must still be captured normally; truncation is
+never a reason to leave "sockets" empty for what's actually on screen.

@@ -28,7 +28,8 @@ public partial class MainWindow : Window
     private readonly HotkeyManager? _hotkeyManager;
     private readonly ScreenCaptureService? _captureService;
     private readonly QuickCopyService? _quickCopyService;
-    private readonly IVisionService? _visionService;
+    private IVisionService? _visionService;
+    private AppSettings? _settings;
     private readonly ItemDatabaseService _databaseService = new();
     private readonly DispatcherTimer _providerStatusTimer;
     private readonly ObservableCollection<string> _statusMessages = new();
@@ -50,6 +51,7 @@ public partial class MainWindow : Window
         try
         {
             var settings = AppSettingsLoader.Load();
+            _settings = settings;
             _yoloMode = settings.YoloMode;
             visionProviderName = settings.VisionProvider;
             _hotkeyManager = new HotkeyManager();
@@ -66,6 +68,10 @@ public partial class MainWindow : Window
                 $"Hotkey {settings.Hotkey.Modifiers}+{settings.Hotkey.Key} registered. " +
                 $"Quick Copy hotkey {settings.QuickCopyHotkey.Modifiers}+{settings.QuickCopyHotkey.Key} registered. " +
                 "Ready to capture.");
+
+            VisionProviderComboBox.ItemsSource = new[] { "Gemini", "Ollama" };
+            VisionProviderComboBox.SelectedItem = settings.VisionProvider;
+            VisionProviderComboBox.IsEnabled = true;
         }
         catch (Exception ex) when (ex is FileNotFoundException or InvalidOperationException)
         {
@@ -94,6 +100,39 @@ public partial class MainWindow : Window
     }
 
     private async void RecheckProviderButton_Click(object sender, RoutedEventArgs e) => await _statusPresenter.RefreshAsync();
+
+    /// <summary>
+    /// Runtime provider switch — rebuilds the vision service from the already-loaded settings
+    /// and repoints every consumer (the main capture pipeline's own field, Quick Copy, and the
+    /// status presenter) at the new instance. No fallback between providers per CLAUDE.md;
+    /// this is the user manually choosing, same as editing appsettings.local.json but without
+    /// a restart.
+    /// </summary>
+    private async void VisionProviderComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_settings is null || VisionProviderComboBox.SelectedItem is not string providerName
+            || providerName == _settings.VisionProvider)
+        {
+            return;
+        }
+
+        _settings.VisionProvider = providerName;
+
+        try
+        {
+            _visionService = VisionServiceFactory.Create(_settings);
+        }
+        catch (Exception ex)
+        {
+            AppendStatus($"Failed to switch vision provider: {ex.Message}");
+            return;
+        }
+
+        _quickCopyService?.SetVisionService(_visionService);
+        _statusPresenter.UpdateProvider(_visionService, providerName);
+        AppendStatus($"Switched vision provider to {providerName}.");
+        await _statusPresenter.RefreshAsync();
+    }
 
     /// <summary>
     /// Layers app activity (Idle/Capturing/Processing/Error) on top of the connectivity text

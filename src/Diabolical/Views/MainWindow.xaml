@@ -24,6 +24,8 @@
         <DockPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
             <GroupBox Header="Vision Provider" DockPanel.Dock="Right" Margin="12,0,0,0">
                 <StackPanel Orientation="Horizontal" Margin="8">
+                    <ComboBox x:Name="VisionProviderComboBox" Width="90" Margin="0,0,12,0" VerticalAlignment="Center"
+                              IsEnabled="False" SelectionChanged="VisionProviderComboBox_SelectionChanged"/>
                     <Ellipse x:Name="ProviderStatusDot" Width="12" Height="12" Fill="Gray" Margin="0,0,8,0" VerticalAlignment="Center"/>
                     <TextBlock x:Name="ProviderStatusText" Text="Checking..." VerticalAlignment="Center"/>
                     <Button x:Name="RecheckProviderButton" Content="Recheck" Margin="8,0,0,0" Click="RecheckProviderButton_Click"/>

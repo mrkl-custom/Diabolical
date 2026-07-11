@@ -8,6 +8,11 @@ regex. Captured gear is stored per character in local JSON files that you can
 export with one click and hand to an AI assistant as context for build and
 gear planning.
 
+## Use of AI in the development of this application
+
+This application has been almost entirely developed using LLM tooling. Design, 
+documentation, images and user interface has been done using LLM.
+
 ## Features
 
 - **Global hotkey capture** — works while the game has focus; the selection

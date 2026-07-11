@@ -29,6 +29,7 @@ public partial class ItemDetailsDialog : Window
         RarityText.Text = item.Rarity.ToString();
         QualityText.Text = item.Quality.ToString();
         ItemPowerText.Text = item.ItemPower.ToString();
+        MasterworkingQualityText.Text = item.MasterworkingQuality.ToString();
         FlagsText.Text = string.Join(" · ", new[]
             {
                 item.Transfigured ? "Transfigured" : null,

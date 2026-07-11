@@ -10,8 +10,8 @@ namespace Diabolical.Services;
 /// </summary>
 public sealed class ProviderStatusPresenter
 {
-    private readonly IVisionService? _visionService;
-    private readonly string _providerName;
+    private IVisionService? _visionService;
+    private string _providerName;
     private string _connectivityText;
     private ActivityState _activityState = ActivityState.Idle;
 
@@ -40,6 +40,17 @@ public sealed class ProviderStatusPresenter
     public void SetActivity(ActivityState state)
     {
         _activityState = state;
+        Changed?.Invoke();
+    }
+
+    /// <summary>Repoints the presenter at a newly selected provider; caller should follow with
+    /// RefreshAsync() to run a fresh connectivity check against it.</summary>
+    public void UpdateProvider(IVisionService? visionService, string providerName)
+    {
+        _visionService = visionService;
+        _providerName = providerName;
+        IsAvailable = null;
+        _connectivityText = visionService is null ? "No vision provider configured." : "Checking...";
         Changed?.Invoke();
     }
 

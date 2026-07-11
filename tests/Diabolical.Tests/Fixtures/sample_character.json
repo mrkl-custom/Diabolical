@@ -10,9 +10,10 @@
         "rarity": "Unique",
         "quality": "Ancestral",
         "itemPower": 800,
+        "masterworkingQuality": 29,
         "affixes": [
-          { "text": "+40% Fury Generation", "source": "Base", "greaterAffix": false },
-          { "text": "+20% Damage while Berserking", "source": "Base", "greaterAffix": true }
+          { "text": "+40% Fury Generation", "greaterAffix": false },
+          { "text": "+20% Damage while Berserking", "greaterAffix": true }
         ],
         "specialEffects": [
           "Every 8 seconds, your next Core Skill deals 500% increased damage."
@@ -29,9 +30,10 @@
         "rarity": "Legendary",
         "quality": "Normal",
         "itemPower": 750,
+        "masterworkingQuality": 12,
         "affixes": [
-          { "text": "+15% Attack Speed", "source": "Implicit", "greaterAffix": false },
-          { "text": "+30% Vulnerable Damage +[20 - 30]%", "source": "Tempered", "greaterAffix": false }
+          { "text": "+15% Attack Speed", "greaterAffix": false },
+          { "text": "+30% Vulnerable Damage +[20 - 30]%", "greaterAffix": false }
         ],
         "specialEffects": ["Aspect of Disobedience"],
         "sockets": ["Empty Socket"],

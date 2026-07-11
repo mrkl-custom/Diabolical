@@ -33,7 +33,7 @@ public class GeminiVisionServiceTests
     {
         const string itemJson = """
             {"slot":"helm","name":"Rage of Harrogath","rarity":"Unique","quality":"Ancestral","itemPower":800,
-             "affixes":[{"text":"+40% Fury Generation","source":"Base"}],"specialEffects":[],
+             "affixes":[{"text":"+40% Fury Generation"}],"specialEffects":[],
              "transfigured":false,"modifiable":true}
             """;
         var service = CreateService(HttpStatusCode.OK, WrapAsGeminiEnvelope(itemJson));
@@ -48,7 +48,6 @@ public class GeminiVisionServiceTests
         Assert.Equal(ItemQuality.Ancestral, result.Item.Quality);
         Assert.Equal(800, result.Item.ItemPower);
         Assert.Single(result.Item.Affixes);
-        Assert.Equal(AffixSource.Base, result.Item.Affixes[0].Source);
         Assert.Empty(result.Item.SpecialEffects);
         Assert.True(result.Item.Modifiable);
     }
