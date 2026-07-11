@@ -10,6 +10,10 @@ gear planning.
 
 <img width="906" height="992" alt="Screenshot-1" src="https://github.com/user-attachments/assets/03ce142c-a066-48cb-9c70-b761ae660e84" />
 
+This is something I made for me and published for you. If you like it, feel free
+to buy me a coffee - or a beer. My choice.
+
+https://ko-fi.com/morokolli
 
 ## Use of AI in the development of this application
 
@@ -189,3 +193,7 @@ Provider** status box shows connectivity plus live activity
 - **Tooltip disappears when the overlay opens** — it shouldn't (the overlay is
   non-activating), but if it does, re-hover the item; the overlay stays up
   until you drag or right-click.
+
+## License
+
+[GNU AGPL v3.0](LICENSE)
