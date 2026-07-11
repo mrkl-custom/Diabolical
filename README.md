@@ -8,12 +8,12 @@ regex. Captured gear is stored per character in local JSON files that you can
 export with one click and hand to an AI assistant as context for build and
 gear planning.
 
-<img width="906" height="992" alt="Screenshot-1" src="https://github.com/user-attachments/assets/03ce142c-a066-48cb-9c70-b761ae660e84" />
-
 This is something I made for me and published for you. If you like it, feel free
 to buy me a coffee - or a beer. My choice.
 
-https://ko-fi.com/morokolli
+<a href='https://ko-fi.com/F6W8230HNL' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi6.png?v=6' border='0' alt='I Really Like You.' /></a>
+
+<img width="906" height="992" alt="Screenshot-1" src="https://github.com/user-attachments/assets/03ce142c-a066-48cb-9c70-b761ae660e84" />
 
 ## Use of AI in the development of this application
 
