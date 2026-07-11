@@ -7,6 +7,9 @@ public class EquipmentItem
     [JsonPropertyName("name")]
     public string Name { get; set; } = string.Empty;
 
+    [JsonPropertyName("itemType")]
+    public string ItemType { get; set; } = string.Empty;
+
     [JsonPropertyName("rarity")]
     [JsonConverter(typeof(ItemRarityJsonConverter))]
     public ItemRarity Rarity { get; set; }
@@ -23,6 +26,9 @@ public class EquipmentItem
 
     [JsonPropertyName("specialEffects")]
     public List<string> SpecialEffects { get; set; } = new();
+
+    [JsonPropertyName("sockets")]
+    public List<string> Sockets { get; set; } = new();
 
     [JsonPropertyName("transfigured")]
     public bool Transfigured { get; set; }

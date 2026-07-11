@@ -17,7 +17,14 @@ Output schema:
                          // physical slot (e.g. which weapon/ring hand or
                          // which charm slot) an item occupies, so use the
                          // category only — don't guess a number.
-  "name": string,
+  "name": string,       // item name only — strip any sunburst glyphs
+                         // (Greater Affix markers) appended after it;
+                         // normalize the stylized smallcaps to normal case
+  "itemType": string,   // the type line shown directly under the item
+                         // name, verbatim (e.g. "Two-Handed Mace
+                         // (Bludgeoning)", "Chest Armor", "Unique
+                         // Quarterstaff"). Empty string if no such line
+                         // is visible.
   "rarity": string,      // one of: "Common", "Magic", "Rare", "Legendary",
                          // "Unique", "Mythic"
   "quality": string,     // "Normal" or "Ancestral"
@@ -26,18 +33,59 @@ Output schema:
     {
       "text": string,    // the stat line, verbatim, including any
                          // bracketed range shown (e.g. "+180 Dexterity
-                         // +[150 - 180]")
-      "source": string   // "Base", "Tempered", or "Transfigured".
-                         // Tempered affixes are visually distinguished
-                         // in-game (bracketed range appended to a base
-                         // stat, or a stat line added after crafting).
-                         // If you can't tell, use "Base".
+                         // +[150 - 180]") — every affix line shows a
+                         // bracketed roll range, so brackets alone are
+                         // NOT a signal of anything; see "source" below
+      "source": string,  // "Base", "Tempered", "Transfigured", or
+                         // "Implicit".
+                         // - "Implicit": inherent stat lines shown ABOVE
+                         //   the item's divider line (e.g. a ring/amulet's
+                         //   flat resistance line, an armor piece's
+                         //   "XXX Armor" value, a weapon's "X,XXX Damage
+                         //   Per Second" line and its damage/attack-speed
+                         //   sublines). These are not rolled affixes.
+                         // - "Tempered": identified by a DISTINCT bullet/
+                         //   marker icon (not by bracketed ranges — those
+                         //   appear on every line) and by position: they
+                         //   are listed after all base affixes, often
+                         //   paired with a small class-restriction recipe
+                         //   tag. If you cannot clearly identify the
+                         //   tempered marker icon, use "Base" instead —
+                         //   do not guess based on bracket presence alone.
+                         // - "Transfigured": an affix added by Horadric
+                         //   Cube Transfiguration; typically only present
+                         //   alongside a "Transfigured" tag elsewhere on
+                         //   the tooltip.
+                         // - A circular-arrows icon marks an Enchanted
+                         //   (Occultist-rerolled) affix — this is still a
+                         //   "Base" slot roll, just rerolled, so label it
+                         //   "Base", not "Tempered" or anything else.
+                         // If genuinely unsure between Base/Tempered,
+                         // default to "Base".
+      "greaterAffix": boolean // true if this line carries a sunburst
+                         // glyph bullet (Greater Affix marker), false
+                         // otherwise. The item name area may also show
+                         // one repeated sunburst per Greater Affix on the
+                         // item — do not add those to "name" (see above).
     }
   ],
-  "specialEffects": string[], // Legendary aspect text (one entry), or
-                              // Unique/Mythic passive effect paragraphs
+  "specialEffects": string[], // Legendary aspect text (one entry, usually
+                              // prefixed "Imprinted:" on the tooltip —
+                              // strip that prefix from the stored text),
+                              // or Unique/Mythic passive effect paragraphs
                               // (one entry per distinct paragraph/effect
-                              // block). Empty array if none.
+                              // block). Empty array if none. Do not put
+                              // flavor text or footer metadata here — see
+                              // the ignore list below.
+  "sockets": string[],        // one entry per socket on the item, in
+                              // order. An empty socket is the literal
+                              // string "Empty Socket". A filled socket is
+                              // the rune/gem name plus any runeword text
+                              // shown when a rune pair completes a
+                              // runeword (e.g. "MoniTzic (100/200) -
+                              // Alacrity / Stampede" plus its effect
+                              // line), captured verbatim as one string.
+                              // Empty array if the item has no sockets.
   "transfigured": boolean,    // true if tooltip shows a "Transfigured"
                               // tag/indicator, false/unknown otherwise
   "modifiable": boolean       // true unless tooltip indicates the item
@@ -54,26 +102,37 @@ Rules:
   round or reformat them.
 - Each distinct paragraph of unique/mythic passive text should be its
   own entry in specialEffects — don't merge them into one string.
+- Ignore list — visible tooltip content that is NOT data and must never
+  be placed in "affixes" or "specialEffects": italicized flavor-text
+  quotes/verses, "Sell Value", "Durability", "Requires Level XX",
+  "Account Bound", class-restriction icon text ("<Class> Only" badges
+  are fine to keep inline within an affix's own text, but never extracted
+  as their own entry), "Unique Equipped", expansion tags ("Vessel of
+  Hatred Item", "Lord of Hatred Item"), a "Crafted" badge, and an
+  "Armory Loadout" tag. The only footer-area content worth capturing at
+  all is a sockets line, which goes in "sockets", not "specialEffects".
 
 Example output:
 {
   "slot": "amulet",
   "name": "Melted Heart of Selig",
+  "itemType": "Amulet",
   "rarity": "Mythic",
   "quality": "Ancestral",
   "itemPower": 900,
   "affixes": [
-    { "text": "+230 All Resist", "source": "Base" },
-    { "text": "+180 Dexterity +[150 - 180] (Class Only)", "source": "Tempered" },
-    { "text": "x28% Vulnerable Damage Multiplier [16 - 28]%", "source": "Tempered" },
-    { "text": "+630 Cold Resistance [524 - 630]", "source": "Tempered" },
-    { "text": "20.0% Resource Generation [20.0]%", "source": "Tempered" }
+    { "text": "+230 All Resist", "source": "Implicit", "greaterAffix": false },
+    { "text": "+180 Dexterity +[150 - 180] (Class Only)", "source": "Base", "greaterAffix": false },
+    { "text": "x28% Vulnerable Damage Multiplier [16 - 28]%", "source": "Base", "greaterAffix": true },
+    { "text": "+630 Cold Resistance [524 - 630]", "source": "Base", "greaterAffix": false },
+    { "text": "20.0% Resource Generation [20.0]%", "source": "Base", "greaterAffix": false }
   ],
   "specialEffects": [
     "Lucky Hit: Up to a 15% Chance to Restore +15 Primary Resource",
     "Damage is dealt to your Primary Resource before Life and damage taken this way is drastically reduced. Your Primary Resource is doubled but Maximum Life is reduced by 75%.",
     "When there are at least 5 Close enemies, Stun them for 7 [4 - 7] seconds. Can only occur once every 20 seconds."
   ],
+  "sockets": [],
   "transfigured": false,
   "modifiable": true
 }

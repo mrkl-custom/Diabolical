@@ -6,16 +6,18 @@
     "helm": [
       {
         "name": "Rage of Harrogath",
+        "itemType": "Helm",
         "rarity": "Unique",
         "quality": "Ancestral",
         "itemPower": 800,
         "affixes": [
-          { "text": "+40% Fury Generation", "source": "Base" },
-          { "text": "+20% Damage while Berserking", "source": "Base" }
+          { "text": "+40% Fury Generation", "source": "Base", "greaterAffix": false },
+          { "text": "+20% Damage while Berserking", "source": "Base", "greaterAffix": true }
         ],
         "specialEffects": [
           "Every 8 seconds, your next Core Skill deals 500% increased damage."
         ],
+        "sockets": [],
         "transfigured": false,
         "modifiable": true
       }
@@ -23,14 +25,16 @@
     "weapon": [
       {
         "name": "Windforce",
+        "itemType": "Two-Handed Bow",
         "rarity": "Legendary",
         "quality": "Normal",
         "itemPower": 750,
         "affixes": [
-          { "text": "+15% Attack Speed", "source": "Base" },
-          { "text": "+30% Vulnerable Damage +[20 - 30]%", "source": "Tempered" }
+          { "text": "+15% Attack Speed", "source": "Implicit", "greaterAffix": false },
+          { "text": "+30% Vulnerable Damage +[20 - 30]%", "source": "Tempered", "greaterAffix": false }
         ],
         "specialEffects": ["Aspect of Disobedience"],
+        "sockets": ["Empty Socket"],
         "transfigured": false,
         "modifiable": true
       }

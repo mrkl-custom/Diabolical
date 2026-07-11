@@ -24,12 +24,15 @@ public class ModelSerializationTests
         Assert.True(character.Equipment.ContainsKey("helm"));
         var helm = Assert.Single(character.Equipment["helm"]);
         Assert.Equal("Rage of Harrogath", helm.Name);
+        Assert.Equal("Helm", helm.ItemType);
         Assert.Equal(ItemRarity.Unique, helm.Rarity);
         Assert.Equal(ItemQuality.Ancestral, helm.Quality);
         Assert.Equal(800, helm.ItemPower);
         Assert.Equal(2, helm.Affixes.Count);
         Assert.All(helm.Affixes, a => Assert.Equal(AffixSource.Base, a.Source));
+        Assert.True(helm.Affixes[1].GreaterAffix);
         Assert.Single(helm.SpecialEffects);
+        Assert.Empty(helm.Sockets);
         Assert.False(helm.Transfigured);
         Assert.True(helm.Modifiable);
 
@@ -37,8 +40,10 @@ public class ModelSerializationTests
         var weapon = Assert.Single(character.Equipment["weapon"]);
         Assert.Equal(ItemRarity.Legendary, weapon.Rarity);
         Assert.Equal(ItemQuality.Normal, weapon.Quality);
+        Assert.Equal(AffixSource.Implicit, weapon.Affixes[0].Source);
         Assert.Equal(AffixSource.Tempered, weapon.Affixes[1].Source);
         Assert.Equal("Aspect of Disobedience", Assert.Single(weapon.SpecialEffects));
+        Assert.Equal("Empty Socket", Assert.Single(weapon.Sockets));
     }
 
     [Fact]

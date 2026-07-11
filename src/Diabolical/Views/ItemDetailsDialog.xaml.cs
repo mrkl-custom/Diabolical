@@ -25,6 +25,7 @@ public partial class ItemDetailsDialog : Window
 
         SlotText.Text = slot;
         NameText.Text = item.Name;
+        ItemTypeText.Text = item.ItemType;
         RarityText.Text = item.Rarity.ToString();
         QualityText.Text = item.Quality.ToString();
         ItemPowerText.Text = item.ItemPower.ToString();
@@ -36,6 +37,7 @@ public partial class ItemDetailsDialog : Window
 
         AffixesDataGrid.ItemsSource = item.Affixes;
         SpecialEffectsTextBox.Text = string.Join(Environment.NewLine, item.SpecialEffects);
+        SocketsTextBox.Text = string.Join(Environment.NewLine, item.Sockets);
     }
 
     private void CopyJsonButton_Click(object sender, RoutedEventArgs e)

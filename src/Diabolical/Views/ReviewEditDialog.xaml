@@ -1,7 +1,7 @@
 <Window x:Class="Diabolical.Views.ReviewEditDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Review Item" Height="680" Width="460"
+        Title="Review Item" Height="780" Width="460"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
     <Grid Margin="12">
         <Grid.RowDefinitions>
@@ -12,9 +12,12 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="2*"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="1*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
@@ -28,21 +31,24 @@
         <TextBlock Text="Name" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center"/>
         <TextBox x:Name="NameTextBox" Grid.Row="1" Grid.Column="1" Margin="0,4"/>
 
-        <TextBlock Text="Rarity" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center"/>
-        <ComboBox x:Name="RarityComboBox" Grid.Row="2" Grid.Column="1" Margin="0,4"/>
+        <TextBlock Text="Item Type" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center"/>
+        <TextBox x:Name="ItemTypeTextBox" Grid.Row="2" Grid.Column="1" Margin="0,4"/>
 
-        <TextBlock Text="Quality" Grid.Row="3" Grid.Column="0" VerticalAlignment="Center"/>
-        <ComboBox x:Name="QualityComboBox" Grid.Row="3" Grid.Column="1" Margin="0,4"/>
+        <TextBlock Text="Rarity" Grid.Row="3" Grid.Column="0" VerticalAlignment="Center"/>
+        <ComboBox x:Name="RarityComboBox" Grid.Row="3" Grid.Column="1" Margin="0,4"/>
 
-        <TextBlock Text="Item Power" Grid.Row="4" Grid.Column="0" VerticalAlignment="Center"/>
-        <TextBox x:Name="ItemPowerTextBox" Grid.Row="4" Grid.Column="1" Margin="0,4"/>
+        <TextBlock Text="Quality" Grid.Row="4" Grid.Column="0" VerticalAlignment="Center"/>
+        <ComboBox x:Name="QualityComboBox" Grid.Row="4" Grid.Column="1" Margin="0,4"/>
 
-        <StackPanel Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,4">
+        <TextBlock Text="Item Power" Grid.Row="5" Grid.Column="0" VerticalAlignment="Center"/>
+        <TextBox x:Name="ItemPowerTextBox" Grid.Row="5" Grid.Column="1" Margin="0,4"/>
+
+        <StackPanel Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,4">
             <CheckBox x:Name="TransfiguredCheckBox" Content="Transfigured" Margin="0,0,16,0"/>
             <CheckBox x:Name="ModifiableCheckBox" Content="Modifiable" IsChecked="True"/>
         </StackPanel>
 
-        <DockPanel Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,8,0,4">
+        <DockPanel Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,8,0,4">
             <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
                 <Button x:Name="AddAffixButton" Content="+ Affix" Padding="6,2" Margin="0,0,4,0" Click="AddAffixButton_Click"/>
                 <Button x:Name="RemoveAffixButton" Content="- Affix" Padding="6,2" Click="RemoveAffixButton_Click"/>
@@ -50,21 +56,26 @@
             <TextBlock Text="Affixes" VerticalAlignment="Center"/>
         </DockPanel>
 
-        <DataGrid x:Name="AffixesDataGrid" Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="2"
+        <DataGrid x:Name="AffixesDataGrid" Grid.Row="8" Grid.Column="0" Grid.ColumnSpan="2"
                   AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column"
                   Margin="0,0,0,8">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Text" Width="*" Binding="{Binding Text, UpdateSourceTrigger=PropertyChanged}"/>
-                <DataGridComboBoxColumn x:Name="AffixSourceColumn" Header="Source" Width="110"
+                <DataGridComboBoxColumn x:Name="AffixSourceColumn" Header="Source" Width="100"
                                          SelectedItemBinding="{Binding Source, UpdateSourceTrigger=PropertyChanged}"/>
+                <DataGridCheckBoxColumn Header="GA" Width="36" Binding="{Binding GreaterAffix, UpdateSourceTrigger=PropertyChanged}"/>
             </DataGrid.Columns>
         </DataGrid>
 
-        <TextBlock Text="Special Effects (one per line)" Grid.Row="8" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,4"/>
-        <TextBox x:Name="SpecialEffectsTextBox" Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="2"
+        <TextBlock Text="Special Effects (one per line)" Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,4"/>
+        <TextBox x:Name="SpecialEffectsTextBox" Grid.Row="10" Grid.Column="0" Grid.ColumnSpan="2"
                  AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
 
-        <StackPanel Grid.Row="10" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal"
+        <TextBlock Text="Sockets (one per line)" Grid.Row="11" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,8,0,4"/>
+        <TextBox x:Name="SocketsTextBox" Grid.Row="12" Grid.Column="0" Grid.ColumnSpan="2" Height="48"
+                 AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
+
+        <StackPanel Grid.Row="13" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal"
                     HorizontalAlignment="Right" Margin="0,12,0,0">
             <Button x:Name="DiscardButton" Content="Discard" Width="90" Margin="0,0,8,0" Click="DiscardButton_Click"/>
             <Button x:Name="SaveButton" Content="Save" Width="90" IsDefault="True" Click="SaveButton_Click"/>

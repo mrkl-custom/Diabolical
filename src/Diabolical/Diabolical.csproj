@@ -9,7 +9,7 @@
     <RootNamespace>Diabolical</RootNamespace>
     <AssemblyName>Diabolical</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <ApplicationIcon>Resources\mrkl.ico</ApplicationIcon>
+    <ApplicationIcon>Resources\diabolical.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="Resources\mrkl.ico" />
+    <Resource Include="Resources\diabolical.ico" />
     <Resource Include="Resources\diabolical.jpg" />
   </ItemGroup>
 

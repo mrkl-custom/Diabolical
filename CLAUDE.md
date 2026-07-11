@@ -69,19 +69,21 @@ rate-limited, just wait and retry.
     "helm": [
       {
         "name": "Rage of Harrogath",
+        "itemType": "Helm",
         "rarity": "Unique",
         "quality": "Ancestral",
         "itemPower": 800,
         "affixes": [
-          { "text": "+40% Fury Generation", "source": "Base" },
-          { "text": "+180 Dexterity +[150 - 180] (Class Only)", "source": "Tempered" }
+          { "text": "+40% Fury Generation", "source": "Base", "greaterAffix": false },
+          { "text": "+180 Dexterity +[150 - 180] (Class Only)", "source": "Tempered", "greaterAffix": false }
         ],
         "specialEffects": ["..."],
+        "sockets": [],
         "transfigured": false,
         "modifiable": true
       }
     ],
-    "weapon": [ { }, { } ],
+    "weapon": [ { }, { }, { }, { } ],
     "seal": [ { } ],
     "charm": [ { }, { }, { } ]
   }
@@ -89,18 +91,39 @@ rate-limited, just wait and retry.
 ```
 
 Field notes:
+- `itemType`: the tooltip's type line, verbatim (e.g. "Two-Handed Mace
+  (Bludgeoning)", "Chest Armor", "Unique Quarterstaff"). Disambiguates
+  same-category items that would otherwise serialize identically — most
+  useful for `weapon` (up to 4 entries) and armor slots. Empty string if
+  the tooltip had no such line.
 - `rarity`: `Common | Magic | Rare | Legendary | Unique | Mythic`
 - `quality`: `Normal | Ancestral` — separate axis from rarity
-- `affixes`: each entry has `text` (verbatim stat line) and `source`:
-  `Base | Tempered | Transfigured` — distinguishes a roll's origin, since
-  Tempering and Transfiguration add affixes distinct from the item's base roll
+- `affixes`: each entry has `text` (verbatim stat line), `source`
+  (`Base | Tempered | Transfigured | Implicit`), and `greaterAffix` (bool).
+  `source` distinguishes a roll's origin: `Implicit` is an inherent stat
+  line above an item's divider (a ring/amulet's flat resist line, an
+  armor piece's Armor value, a weapon's DPS block) — not a rolled affix;
+  `Tempered`/`Transfigured` cover Tempering and Transfiguration rolls,
+  which are distinct from the item's base roll. An Enchanted
+  (Occultist-rerolled) affix is still stored as `Base` — the reroll
+  doesn't change which slot it occupies, so it isn't a distinct source
+  value. `greaterAffix` marks a stat line carrying the sunburst Greater
+  Affix glyph in-game.
 - `specialEffects`: replaces a single `aspect` field. Holds zero entries
   (normal rares/magic items), one entry (a Legendary's imprinted aspect),
   or several (a Unique/Mythic's multiple passive effect paragraphs, or a
   Transfigured amulet's extra Legendary power via Kullean Tuning Prism)
+- `sockets`: one entry per socket, in order; `"Empty Socket"` for an
+  unfilled one, or the rune/gem name plus any runeword effect text for a
+  filled one, verbatim. Empty array if the item has no sockets.
 - `transfigured` / `modifiable`: tracks Horadric Cube crafting state —
   whether the item has been Transfigured, and whether it can still be
   modified (tempered/masterworked/enchanted/imprinted) or is locked
+- Category capacities: single-instance slots (helm, chest, gloves, pants,
+  boots, amulet, seal) hold 1 item; `ring` holds 2; `weapon` holds 4
+  (Barbarian's weapon-swap mechanic — up to two full one-hand/one-hand
+  sets); `charm` holds 6 (the game's hard maximum). Authoritative source is
+  `ItemDatabaseService.CategoryCapacities`.
 
 ### Talisman items (Seal + Charms)
 Seals and Charms (Lord of Hatred's Talisman system) are stored as two more
@@ -132,6 +155,10 @@ Diabolical/
 │       ├── Diabolical.csproj
 │       ├── App.xaml
 │       ├── App.xaml.cs
+│       ├── app.manifest                   # requireAdministrator — see Decisions Log
+│       │
+│       ├── Properties/
+│       │   └── AssemblyInfo.cs
 │       │
 │       ├── Views/
 │       │   ├── MainWindow.xaml
@@ -146,12 +173,18 @@ Diabolical/
 │       ├── Services/
 │       │   ├── ScreenCaptureService.cs    # hotkey + screenshot/crop
 │       │   ├── QuickCopyService.cs        # independent throwaway lookup flow
+│       │   ├── OverlayCaptureSession.cs   # shared overlay-open/reentrancy-guard helper
+│       │   ├── ScreenRegionCapture.cs     # shared screen-region → PNG bytes capture
 │       │   ├── IVisionService.cs
 │       │   ├── GeminiVisionService.cs     # API call + prompt template
+│       │   ├── GeminiApiModels.cs
 │       │   ├── OllamaVisionService.cs
+│       │   ├── OllamaApiModels.cs
 │       │   ├── VisionServiceFactory.cs
 │       │   ├── ExtractionJsonParser.cs
 │       │   ├── ItemDatabaseService.cs     # read/write character JSON
+│       │   ├── ProviderStatusPresenter.cs # connectivity/activity status text, UI-free
+│       │   ├── ClipboardHelper.cs         # Clipboard.SetText with a flake retry
 │       │   ├── HotkeyManager.cs           # global hotkey registration
 │       │   ├── AppSettingsLoader.cs
 │       │   ├── RepoPaths.cs
@@ -165,12 +198,14 @@ Diabolical/
 │       │   ├── ItemRarity.cs
 │       │   ├── ItemQuality.cs
 │       │   ├── ItemAffix.cs
+│       │   ├── ActivityState.cs           # Idle/Capturing/Processing/Error
 │       │   └── AppSettings.cs             # API key, hotkey config, etc.
 │       │
 │       ├── Prompts/
 │       │   └── item_extraction_prompt.txt # vision system prompt + schema/examples
 │       │
 │       └── Resources/
+│           ├── DarkTheme.xaml             # app-wide dark WPF theme (see App.xaml)
 │           └── (icons, background art, sound asset if any)
 │
 ├── data/
@@ -215,6 +250,8 @@ register the same global hotkeys, and the second instance will fail.
 - `appsettings.local.json` has two hotkey blocks, `Hotkey` (main capture)
   and `QuickCopyHotkey`, same `Modifiers`/`Key` shape, defaulting to
   non-colliding bindings (e.g. `Ctrl+Alt+D` and `Ctrl+Alt+C`).
+- `appsettings.local.json` also has a top-level `YoloMode` boolean
+  (default `false`) — see Decisions Log for what it skips.
 - `.gitignore` includes:
   ```
   bin/
@@ -295,6 +332,43 @@ register the same global hotkeys, and the second instance will fail.
 - **Sound cue added on successful save/copy only**, not on failure or
   cancel, to avoid noise during misfires. No bundled audio asset required
   for hobby scope — a small synthesized tone or a system sound is enough.
+- **YOLO Mode (`AppSettings.YoloMode`, `appsettings.local.json`, off by
+  default).** When enabled, skips the Review/Edit dialog on a scanned item
+  (the vision model's parse is saved as-is) and skips the "are you sure"
+  confirmation on equipment removal, for a faster capture loop once a user
+  trusts the vision model's output. Referenced by Core Flow step 4.
+- **App runs elevated (`requireAdministrator` in `app.manifest`).** Needed
+  because Windows UIPI blocks `WM_HOTKEY` delivery to a non-elevated
+  process while an elevated game (Diablo 4, if it's running as admin) has
+  foreground focus — without elevation, the capture/Quick Copy hotkeys
+  would silently stop firing mid-game. The alternative, `uiAccess`,
+  requires code-signing, which isn't a good fit for a hobby project, so
+  full elevation is the pragmatic trade-off. This does mean everything
+  else in the process — HTTP calls, clipboard, file dialogs/exports —
+  also runs elevated; kept in check by sanitizing character-name input
+  used as a file name and not crashing on malformed provider responses.
+- **Item model extended with `itemType`, `sockets`, `AffixSource.Implicit`,
+  and `ItemAffix.GreaterAffix`** (2026-07-11 tooltip-screenshot review,
+  BACKLOG.md V1–V6). `itemType` captures the tooltip's type line verbatim
+  so same-category items (esp. the 4-slot `weapon` category) don't
+  serialize identically. `sockets: string[]` holds one entry per socket
+  (`"Empty Socket"` or the rune/gem name + runeword effect text verbatim)
+  — previously dropped or leaked into `specialEffects`. `Implicit` was
+  added to `AffixSource` for inherent above-the-divider stat lines (flat
+  resist on rings/amulets, an armor piece's Armor value, a weapon's DPS
+  block) that are neither rolled affixes nor crafting-added rolls;
+  Enchanted (Occultist-rerolled) affixes stay `Base` rather than getting
+  their own source value, since a reroll doesn't change which slot the
+  affix occupies. `ItemAffix.GreaterAffix: bool` marks a line carrying
+  the sunburst Greater Affix glyph. The extraction prompt's Tempered
+  guidance was also corrected — bracketed roll ranges appear on every
+  affix line, not just Tempered ones, so the heuristic now keys off the
+  Tempered marker icon and the affix's position (after base affixes),
+  and the prompt's own worked example (previously mislabeling Melted
+  Heart of Selig's base affixes as Tempered) was fixed. The prompt also
+  gained an explicit ignore-list (flavor text, Sell Value, Durability,
+  Requires Level, Account Bound, expansion tags, Crafted/Armory Loadout
+  badges) so these don't leak into `specialEffects`.
 
 ## Open Decisions (not yet finalized)
 - **First-run `appsettings.local.json` setup** — manual copy-and-edit of

@@ -7,7 +7,8 @@ public enum AffixSource
 {
     Base,
     Tempered,
-    Transfigured
+    Transfigured,
+    Implicit
 }
 
 /// <summary>
@@ -38,4 +39,7 @@ public class ItemAffix
     [JsonPropertyName("source")]
     [JsonConverter(typeof(AffixSourceJsonConverter))]
     public AffixSource Source { get; set; } = AffixSource.Base;
+
+    [JsonPropertyName("greaterAffix")]
+    public bool GreaterAffix { get; set; }
 }

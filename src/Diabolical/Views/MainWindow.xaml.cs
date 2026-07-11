@@ -21,7 +21,9 @@ public partial class MainWindow : Window
 {
     private static readonly string ExportDirectory = Path.Combine(RepoPaths.FindRepoRoot(), "data", "exports");
 
-    private static readonly TimeSpan ProviderStatusRefreshInterval = TimeSpan.FromMinutes(1);
+    // A free-tier Gemini key is rate-limited, and this poll is just for a status dot — 1 min
+    // was ~1,440 list-models calls/day for no real benefit over a slower cadence.
+    private static readonly TimeSpan ProviderStatusRefreshInterval = TimeSpan.FromMinutes(10);
 
     private readonly HotkeyManager? _hotkeyManager;
     private readonly ScreenCaptureService? _captureService;

@@ -36,15 +36,17 @@ public partial class ReviewEditDialog : Window
         SlotComboBox.ItemsSource = KnownSlots;
         SlotComboBox.Text = parsed.Slot;
         NameTextBox.Text = parsed.Name;
+        ItemTypeTextBox.Text = parsed.ItemType;
         RarityComboBox.SelectedItem = parsed.Rarity;
         QualityComboBox.SelectedItem = parsed.Quality;
         ItemPowerTextBox.Text = parsed.ItemPower.ToString();
         TransfiguredCheckBox.IsChecked = parsed.Transfigured;
         ModifiableCheckBox.IsChecked = parsed.Modifiable;
         SpecialEffectsTextBox.Text = string.Join(Environment.NewLine, parsed.SpecialEffects);
+        SocketsTextBox.Text = string.Join(Environment.NewLine, parsed.Sockets);
 
         _affixRows = new ObservableCollection<AffixEditRow>(
-            parsed.Affixes.Select(a => new AffixEditRow { Text = a.Text, Source = a.Source }));
+            parsed.Affixes.Select(a => new AffixEditRow { Text = a.Text, Source = a.Source, GreaterAffix = a.GreaterAffix }));
         AffixesDataGrid.ItemsSource = _affixRows;
     }
 
@@ -81,14 +83,18 @@ public partial class ReviewEditDialog : Window
         Item = new EquipmentItem
         {
             Name = NameTextBox.Text.Trim(),
+            ItemType = ItemTypeTextBox.Text.Trim(),
             Rarity = RarityComboBox.SelectedItem is ItemRarity rarity ? rarity : ItemRarity.Unknown,
             Quality = QualityComboBox.SelectedItem is ItemQuality quality ? quality : ItemQuality.Unknown,
             ItemPower = itemPower,
             Affixes = _affixRows
                 .Where(row => !string.IsNullOrWhiteSpace(row.Text))
-                .Select(row => new ItemAffix { Text = row.Text.Trim(), Source = row.Source })
+                .Select(row => new ItemAffix { Text = row.Text.Trim(), Source = row.Source, GreaterAffix = row.GreaterAffix })
                 .ToList(),
             SpecialEffects = SpecialEffectsTextBox.Text
+                .Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .ToList(),
+            Sockets = SocketsTextBox.Text
                 .Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
                 .ToList(),
             Transfigured = TransfiguredCheckBox.IsChecked ?? false,
@@ -108,4 +114,5 @@ public class AffixEditRow
 {
     public string Text { get; set; } = string.Empty;
     public AffixSource Source { get; set; } = AffixSource.Base;
+    public bool GreaterAffix { get; set; }
 }
