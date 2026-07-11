@@ -5,6 +5,8 @@ public class AppSettings
     public string VisionProvider { get; set; } = "Gemini";
     public GeminiSettings Gemini { get; set; } = new();
     public OllamaSettings Ollama { get; set; } = new();
+    public GrokSettings Grok { get; set; } = new();
+    public MistralSettings Mistral { get; set; } = new();
     public HotkeySettings Hotkey { get; set; } = new();
     public HotkeySettings QuickCopyHotkey { get; set; } = new();
 
@@ -24,6 +26,18 @@ public class OllamaSettings
 {
     public string BaseUrl { get; set; } = "http://localhost:11434";
     public string Model { get; set; } = string.Empty;
+}
+
+public class GrokSettings
+{
+    public string ApiKey { get; set; } = string.Empty;
+    public string Model { get; set; } = "grok-2-vision-1212";
+}
+
+public class MistralSettings
+{
+    public string ApiKey { get; set; } = string.Empty;
+    public string Model { get; set; } = "mistral-small-latest";
 }
 
 public class HotkeySettings

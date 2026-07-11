@@ -25,8 +25,10 @@ public static class VisionServiceFactory
             // Local inference is legitimately slow (large vision models on modest hardware can
             // take minutes), so Ollama gets a longer timeout than HttpClient's 100s default.
             "Ollama" => new OllamaVisionService(new HttpClient { Timeout = TimeSpan.FromMinutes(5) }, settings.Ollama, prompt),
+            "Grok" => new GrokVisionService(new HttpClient(), settings.Grok, prompt),
+            "Mistral" => new MistralVisionService(new HttpClient(), settings.Mistral, prompt),
             _ => throw new InvalidOperationException(
-                $"Unknown VisionProvider '{settings.VisionProvider}'. Expected 'Gemini' or 'Ollama'.")
+                $"Unknown VisionProvider '{settings.VisionProvider}'. Expected 'Gemini', 'Ollama', 'Grok', or 'Mistral'.")
         };
     }
 

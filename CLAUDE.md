@@ -14,8 +14,8 @@ over robustness, scalability, or high-availability concerns.
    tooltip's position moves depending on where the cursor/item is in the
    game window, so the user manually selects the area each time.
 2. **Vision LLM parse** — The cropped image is sent to the configured vision
-   provider (Gemini 2.5 Flash or a local Ollama model) with a fixed prompt
-   asking for strict JSON output matching the schema below.
+   provider (Gemini 2.5 Flash, a local Ollama model, Grok, or Mistral) with
+   a fixed prompt asking for strict JSON output matching the schema below.
    - No OCR library. No regex parsing. The vision model replaces both steps.
 3. **Parse response** — Strip any markdown code fences, deserialize into
    the `EquipmentItem` model via `System.Text.Json`.
@@ -195,6 +195,10 @@ Diabolical/
 │       │   ├── GeminiApiModels.cs
 │       │   ├── OllamaVisionService.cs
 │       │   ├── OllamaApiModels.cs
+│       │   ├── GrokVisionService.cs
+│       │   ├── GrokApiModels.cs
+│       │   ├── MistralVisionService.cs
+│       │   ├── MistralApiModels.cs
 │       │   ├── VisionServiceFactory.cs
 │       │   ├── ExtractionJsonParser.cs
 │       │   ├── ItemDatabaseService.cs     # read/write character JSON
@@ -323,11 +327,28 @@ register the same global hotkeys, and the second instance will fail.
   an AI assistant as a standalone item, whether it came from the equipment
   list or a quick lookup.
 - **Vision pipeline generalized behind `IVisionService`.** Gemini 2.5
-  Flash and a local Ollama model (Qwen3-VL family) are both supported via
-  `VisionServiceFactory`, selected by the `VisionProvider` config key. No
-  automatic fallback between providers — switching is deliberate and
-  config-driven, matching this project's hobby-scope "no fallback LLM
-  providers" principle.
+  Flash, a local Ollama model (Qwen3-VL family), Grok, and Mistral are all
+  supported via `VisionServiceFactory`, selected by the `VisionProvider`
+  config key. No automatic fallback between providers — switching is
+  deliberate and config-driven, matching this project's hobby-scope "no
+  fallback LLM providers" principle.
+- **Grok support added via `GrokVisionService`** (2026-07-11), using xAI's
+  OpenAI-compatible `/v1/chat/completions` REST endpoint (Bearer auth,
+  base64 `image_url` content part) — no SDK, matching Gemini/Ollama's
+  direct-REST approach. `GrokSettings` (`appsettings.local.json`) holds
+  `ApiKey` and `Model` (default `grok-2-vision-1212`, since xAI has
+  multiple vision-capable model tags). Availability check hits
+  `GET /v1/models` with the same Bearer token.
+- **Mistral support added via `MistralVisionService`** (2026-07-11), using
+  Mistral's `/v1/chat/completions` REST endpoint (Bearer auth). Mostly
+  OpenAI-compatible like Grok's, but with one wire-format difference:
+  Mistral's `image_url` content part is a bare data-URL string, not a
+  nested `{"url": ...}` object — `MistralContentPart.ImageUrl` is typed
+  as `string?` accordingly, unlike `GrokContentPart.ImageUrl`. Defaults
+  to `mistral-small-latest` rather than a dated Pixtral tag, since
+  Pixtral-12B-2409 (the earlier dedicated vision model) carries a
+  12/2025 deprecation date in Mistral's own docs — the `-latest` alias
+  avoids baking in a model tag that goes stale.
 - **Talisman system (Seal + Charms) folded into the existing `equipment`
   dictionary, reversing the earlier "separate top-level section" plan.**
   Confirmed via screenshots that a Seal and Charms are structurally

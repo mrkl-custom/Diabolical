@@ -69,7 +69,7 @@ public partial class MainWindow : Window
                 $"Quick Copy hotkey {settings.QuickCopyHotkey.Modifiers}+{settings.QuickCopyHotkey.Key} registered. " +
                 "Ready to capture.");
 
-            VisionProviderComboBox.ItemsSource = new[] { "Gemini", "Ollama" };
+            VisionProviderComboBox.ItemsSource = new[] { "Gemini", "Ollama", "Grok", "Mistral" };
             VisionProviderComboBox.SelectedItem = settings.VisionProvider;
             VisionProviderComboBox.IsEnabled = true;
         }
