@@ -8,6 +8,9 @@ regex. Captured gear is stored per character in local JSON files that you can
 export with one click and hand to an AI assistant as context for build and
 gear planning.
 
+<img width="906" height="992" alt="Screenshot-1" src="https://github.com/user-attachments/assets/03ce142c-a066-48cb-9c70-b761ae660e84" />
+
+
 ## Use of AI in the development of this application
 
 This application has been almost entirely developed using LLM tooling. Design, 
