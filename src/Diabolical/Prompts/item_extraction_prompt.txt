@@ -9,10 +9,14 @@ Output schema:
 {
   "slot": string,       // inferred equipment category, one of:
                          // "helm", "chest", "gloves", "pants", "boots",
-                         // "weapon", "ring", "amulet". A tooltip alone
-                         // can't reveal which physical slot (e.g. which
-                         // weapon or ring hand) an item occupies, so use
-                         // the category only — don't guess a number.
+                         // "weapon", "ring", "amulet", "seal", "charm".
+                         // "seal" and "charm" are the Talisman system's
+                         // items (a single Seal plus up to 6 Charms) —
+                         // structurally identical tooltips to any other
+                         // gear piece. A tooltip alone can't reveal which
+                         // physical slot (e.g. which weapon/ring hand or
+                         // which charm slot) an item occupies, so use the
+                         // category only — don't guess a number.
   "name": string,
   "rarity": string,      // one of: "Common", "Magic", "Rare", "Legendary",
                          // "Unique", "Mythic"

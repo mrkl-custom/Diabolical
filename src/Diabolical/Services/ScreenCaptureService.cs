@@ -13,6 +13,13 @@ public class ScreenCaptureService
     public event Action<byte[]>? CaptureCompleted;
     public event Action? CaptureCancelled;
 
+    /// <summary>
+    /// Fires Capturing when the drag-select overlay opens and Idle if it's cancelled.
+    /// Processing/Error are the caller's concern (see MainWindow), since only it knows when
+    /// the captured bytes are actually handed to the vision model.
+    /// </summary>
+    public event Action<ActivityState>? ActivityChanged;
+
     public ScreenCaptureService(HotkeyManager hotkeyManager, HotkeySettings hotkeySettings)
     {
         hotkeyManager.Register(hotkeySettings, BeginCapture);
@@ -29,7 +36,12 @@ public class ScreenCaptureService
     {
         var overlay = new SelectionOverlayWindow();
         overlay.SelectionCompleted += (_, region) => CaptureCompleted?.Invoke(ScreenRegionCapture.Capture(region));
-        overlay.SelectionCancelled += (_, _) => CaptureCancelled?.Invoke();
+        overlay.SelectionCancelled += (_, _) =>
+        {
+            ActivityChanged?.Invoke(ActivityState.Idle);
+            CaptureCancelled?.Invoke();
+        };
+        ActivityChanged?.Invoke(ActivityState.Capturing);
         overlay.Show();
     }
 }

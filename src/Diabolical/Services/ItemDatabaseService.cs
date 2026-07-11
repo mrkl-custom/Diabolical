@@ -13,14 +13,16 @@ public class ItemDatabaseService
 {
     /// <summary>
     /// Max equipped items per category. Everything not listed here is capped at a single
-    /// entry. "ring" is always 2. "weapon" is 4, not 2 — Barbarian's weapon-swap mechanic
-    /// means up to two full one-hand/one-hand sets (4 weapons) can be equipped at once, and
-    /// a tooltip alone can't tell us which set/hand an item occupies, so we don't try to
-    /// model slots more precisely than "how many of this category can exist" — items within
-    /// a multi-item category are matched by name instead.
+    /// entry (this covers "seal", which is always 1). "ring" is always 2. "weapon" is 4, not
+    /// 2 — Barbarian's weapon-swap mechanic means up to two full one-hand/one-hand sets (4
+    /// weapons) can be equipped at once, and a tooltip alone can't tell us which set/hand an
+    /// item occupies, so we don't try to model slots more precisely than "how many of this
+    /// category can exist" — items within a multi-item category are matched by name instead.
+    /// "charm" is capped at 6, the game's hard maximum regardless of how many are currently
+    /// unlocked by the equipped seal — that's live game state, not something the JSON tracks.
     /// </summary>
     private static readonly Dictionary<string, int> CategoryCapacities =
-        new(StringComparer.OrdinalIgnoreCase) { ["weapon"] = 4, ["ring"] = 2 };
+        new(StringComparer.OrdinalIgnoreCase) { ["weapon"] = 4, ["ring"] = 2, ["charm"] = 6 };
     private const int DefaultCategoryCapacity = 1;
 
     private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };

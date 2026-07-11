@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Media;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -30,6 +31,8 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _providerStatusTimer;
     private readonly ObservableCollection<string> _statusMessages = new();
     private string _visionProviderName = "";
+    private string _connectivityText = "Checking...";
+    private ActivityState _activityState = ActivityState.Idle;
     private bool _yoloMode;
 
     private string CurrentCharacterName => CharacterComboBox.Text.Trim();
@@ -53,9 +56,12 @@ public partial class MainWindow : Window
             _captureService = new ScreenCaptureService(_hotkeyManager, settings.Hotkey);
             _captureService.CaptureCompleted += OnCaptureCompleted;
             _captureService.CaptureCancelled += OnCaptureCancelled;
+            _captureService.ActivityChanged += SetActivity;
             _visionService = VisionServiceFactory.Create(settings);
             _quickCopyService = new QuickCopyService(_hotkeyManager, settings.QuickCopyHotkey, _visionService);
             _quickCopyService.StatusChanged += AppendStatus;
+            _quickCopyService.ActivityChanged += SetActivity;
+            _quickCopyService.ItemCopied += PlaySuccessSound;
             AppendStatus(
                 $"Hotkey {settings.Hotkey.Modifiers}+{settings.Hotkey.Key} registered. " +
                 $"Quick Copy hotkey {settings.QuickCopyHotkey.Modifiers}+{settings.QuickCopyHotkey.Key} registered. " +
@@ -75,22 +81,50 @@ public partial class MainWindow : Window
         if (_visionService is null)
         {
             ProviderStatusDot.Fill = Brushes.Gray;
-            ProviderStatusText.Text = "No vision provider configured.";
+            _connectivityText = "No vision provider configured.";
+            UpdateProviderStatusText();
             return;
         }
 
         ProviderStatusDot.Fill = Brushes.Gray;
-        ProviderStatusText.Text = $"{_visionProviderName}: checking...";
+        _connectivityText = $"{_visionProviderName}: checking...";
+        UpdateProviderStatusText();
 
         var result = await _visionService.CheckAvailabilityAsync();
 
         ProviderStatusDot.Fill = result.IsAvailable ? Brushes.LimeGreen : Brushes.Red;
-        ProviderStatusText.Text = result.IsAvailable
+        _connectivityText = result.IsAvailable
             ? $"{_visionProviderName}: connected"
             : $"{_visionProviderName}: unreachable{(result.Detail is null ? "" : $" — {result.Detail}")}";
+        UpdateProviderStatusText();
     }
 
     private async void RecheckProviderButton_Click(object sender, RoutedEventArgs e) => await RefreshProviderStatusAsync();
+
+    /// <summary>
+    /// Layers app activity (Idle/Capturing/Processing/Error) on top of the connectivity text
+    /// so the status box also doubles as a "something's happening" indicator for both the
+    /// main capture flow and Quick Copy, without disturbing the periodic connectivity check.
+    /// </summary>
+    private void SetActivity(ActivityState state)
+    {
+        _activityState = state;
+        UpdateProviderStatusText();
+    }
+
+    private void UpdateProviderStatusText()
+    {
+        ProviderStatusText.Text = _activityState switch
+        {
+            ActivityState.Capturing => $"{_connectivityText} — Capturing...",
+            ActivityState.Processing => $"{_connectivityText} — Processing scan...",
+            ActivityState.Error => $"{_connectivityText} — Error processing scan.",
+            _ => _connectivityText
+        };
+    }
+
+    /// <summary>Gentle success cue on a saved/copied item only — nothing on failure or cancel.</summary>
+    private static void PlaySuccessSound() => SystemSounds.Asterisk.Play();
 
     /// <summary>Appends a message to the status list and scrolls it into view.</summary>
     private void AppendStatus(string message)
@@ -111,21 +145,25 @@ public partial class MainWindow : Window
         if (_visionService is null)
         {
             AppendStatus("Capture succeeded, but the vision provider isn't configured — see appsettings.local.json.");
+            SetActivity(ActivityState.Idle);
             return;
         }
 
         if (string.IsNullOrWhiteSpace(CurrentCharacterName))
         {
             AppendStatus("Set a character name before capturing.");
+            SetActivity(ActivityState.Idle);
             return;
         }
 
+        SetActivity(ActivityState.Processing);
         AppendStatus("Sending capture to the vision model...");
         var result = await _visionService.ExtractItemAsync(imageBytes);
 
         if (!result.Success || result.Item is null)
         {
             AppendStatus($"Extraction failed: {result.ErrorMessage}");
+            SetActivity(ActivityState.Error);
             return;
         }
 
@@ -143,6 +181,7 @@ public partial class MainWindow : Window
             if (dialog.ShowDialog() != true)
             {
                 AppendStatus("Item discarded.");
+                SetActivity(ActivityState.Idle);
                 return;
             }
 
@@ -157,6 +196,8 @@ public partial class MainWindow : Window
         RefreshCharacterList();
         await RefreshEquipmentListAsync(characterName);
         AppendStatus($"Saved '{item.Name}' to {characterName}'s {slot} slot.");
+        SetActivity(ActivityState.Idle);
+        PlaySuccessSound();
     }
 
     private async Task RefreshEquipmentListAsync(string characterName)

@@ -4,5 +4,6 @@ obj/
 data/characters/*.json
 data/exports/*.json
 appsettings.local.json
+BACKLOG.md
 .vs/
 .vscode/

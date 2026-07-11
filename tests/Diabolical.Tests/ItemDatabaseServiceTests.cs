@@ -150,6 +150,55 @@ public class ItemDatabaseServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task UpsertItemAsync_SixDistinctCharms_AllFitCharmCapacity()
+    {
+        var names = new[] { "Charm A", "Charm B", "Charm C", "Charm D", "Charm E", "Charm F" };
+        foreach (var name in names)
+        {
+            var charm = new EquipmentItem { Name = name, Rarity = ItemRarity.Rare, Quality = ItemQuality.Normal, ItemPower = 700 };
+            await _sut.UpsertItemAsync("MyBarb", "charm", charm, characterClass: "Barbarian");
+        }
+
+        var reloaded = await _sut.LoadAsync("MyBarb");
+
+        Assert.Equal(6, reloaded.Equipment["charm"].Count);
+        Assert.All(names, name => Assert.Contains(reloaded.Equipment["charm"], i => i.Name == name));
+    }
+
+    [Fact]
+    public async Task UpsertItemAsync_SeventhDistinctCharm_EvictsTheOldestToStayAtCapacity()
+    {
+        foreach (var name in new[] { "Charm A", "Charm B", "Charm C", "Charm D", "Charm E", "Charm F" })
+        {
+            var charm = new EquipmentItem { Name = name, Rarity = ItemRarity.Rare, Quality = ItemQuality.Normal, ItemPower = 700 };
+            await _sut.UpsertItemAsync("MyBarb", "charm", charm, characterClass: "Barbarian");
+        }
+
+        var seventh = new EquipmentItem { Name = "Charm G", Rarity = ItemRarity.Rare, Quality = ItemQuality.Normal, ItemPower = 700 };
+        await _sut.UpsertItemAsync("MyBarb", "charm", seventh);
+
+        var reloaded = await _sut.LoadAsync("MyBarb");
+
+        Assert.Equal(6, reloaded.Equipment["charm"].Count);
+        Assert.DoesNotContain(reloaded.Equipment["charm"], i => i.Name == "Charm A");
+        Assert.Contains(reloaded.Equipment["charm"], i => i.Name == "Charm G");
+    }
+
+    [Fact]
+    public async Task UpsertItemAsync_SecondDistinctSeal_EvictsTheFirst()
+    {
+        var first = new EquipmentItem { Name = "Seal of the Void", Rarity = ItemRarity.Unique, Quality = ItemQuality.Ancestral, ItemPower = 800 };
+        await _sut.UpsertItemAsync("MyBarb", "seal", first, characterClass: "Barbarian");
+
+        var second = new EquipmentItem { Name = "Seal of Ill Intent", Rarity = ItemRarity.Unique, Quality = ItemQuality.Ancestral, ItemPower = 800 };
+        await _sut.UpsertItemAsync("MyBarb", "seal", second);
+
+        var reloaded = await _sut.LoadAsync("MyBarb");
+
+        Assert.Equal("Seal of Ill Intent", Assert.Single(reloaded.Equipment["seal"]).Name);
+    }
+
+    [Fact]
     public async Task RemoveItemAsync_ExistingItem_RemovesOnlyThatItem()
     {
         var helm = new EquipmentItem { Name = "Rage of Harrogath", Rarity = ItemRarity.Unique, Quality = ItemQuality.Ancestral, ItemPower = 800 };

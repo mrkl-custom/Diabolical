@@ -18,6 +18,12 @@ public class QuickCopyService
     /// <summary>Fires with a human-readable status line, mirroring the main capture flow's status messages.</summary>
     public event Action<string>? StatusChanged;
 
+    /// <summary>Idle → Capturing (overlay open) → Processing (sent to vision model) → Idle/Error.</summary>
+    public event Action<ActivityState>? ActivityChanged;
+
+    /// <summary>Fires once the extracted item's JSON has actually landed on the clipboard, for a success cue.</summary>
+    public event Action? ItemCopied;
+
     public QuickCopyService(HotkeyManager hotkeyManager, HotkeySettings hotkeySettings, IVisionService visionService)
     {
         _visionService = visionService;
@@ -28,12 +34,18 @@ public class QuickCopyService
     {
         var overlay = new SelectionOverlayWindow();
         overlay.SelectionCompleted += async (_, region) => await OnRegionSelectedAsync(region);
-        overlay.SelectionCancelled += (_, _) => StatusChanged?.Invoke("Quick copy cancelled.");
+        overlay.SelectionCancelled += (_, _) =>
+        {
+            ActivityChanged?.Invoke(ActivityState.Idle);
+            StatusChanged?.Invoke("Quick copy cancelled.");
+        };
+        ActivityChanged?.Invoke(ActivityState.Capturing);
         overlay.Show();
     }
 
     private async Task OnRegionSelectedAsync(Int32Rect region)
     {
+        ActivityChanged?.Invoke(ActivityState.Processing);
         StatusChanged?.Invoke("Quick copy: sending capture to the vision model...");
 
         var imageBytes = ScreenRegionCapture.Capture(region);
@@ -42,6 +54,7 @@ public class QuickCopyService
         if (!result.Success || result.Item is null)
         {
             StatusChanged?.Invoke($"Quick copy extraction failed: {result.ErrorMessage}");
+            ActivityChanged?.Invoke(ActivityState.Error);
             return;
         }
 
@@ -50,5 +63,7 @@ public class QuickCopyService
         Clipboard.SetText(json);
 
         StatusChanged?.Invoke($"Quick copy: copied '{item.Name}' JSON to clipboard.");
+        ActivityChanged?.Invoke(ActivityState.Idle);
+        ItemCopied?.Invoke();
     }
 }

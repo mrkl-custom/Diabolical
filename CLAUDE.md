@@ -13,15 +13,18 @@ over robustness, scalability, or high-availability concerns.
    region on screen. Fixed-region cropping isn't feasible since the item
    tooltip's position moves depending on where the cursor/item is in the
    game window, so the user manually selects the area each time.
-2. **Vision LLM parse** — The cropped image is sent directly to
-   **Gemini 2.5 Flash** (Google AI Studio free tier) with a fixed prompt
+2. **Vision LLM parse** — The cropped image is sent to the configured vision
+   provider (Gemini 2.5 Flash or a local Ollama model) with a fixed prompt
    asking for strict JSON output matching the schema below.
    - No OCR library. No regex parsing. The vision model replaces both steps.
 3. **Parse response** — Strip any markdown code fences, deserialize into
    the `EquipmentItem` model via `System.Text.Json`.
 4. **Review/Edit UI** — Show the parsed item to the user for confirmation
-   or correction before it's saved. LLM output isn't blindly trusted.
+   or correction before it's saved. LLM output isn't blindly trusted
+   (unless YOLO Mode is enabled — see Decisions Log).
 5. **Save** — Merge/update the item into the character's local JSON file.
+   On successful save, a short, gentle audio cue plays and the status
+   indicator reflects completion (see UX Feedback below).
 6. **Export** — From the UI, export a character's equipment JSON to the
    clipboard or to a standalone file, for handing off to an AI assistant
    as context. This is the actual point of the app, so it should be a
@@ -34,12 +37,25 @@ over robustness, scalability, or high-availability concerns.
    single item into an AI assistant mid-session — not part of gear
    tracking, and doesn't touch `ItemDatabaseService`.
 
-No fallback LLM providers needed (hobby scope) — if Gemini's free tier is
+No fallback LLM providers needed (hobby scope) — if a provider is
 rate-limited, just wait and retry.
+
+## UX Feedback
+- **Status indicator** — the existing "Vision Provider" status box (dot +
+  text) doubles as an activity indicator, not just a connectivity check.
+  It cycles through `Idle` → `Capturing` → `Processing` → back to `Idle`
+  (or `Error` on failure) during both the main capture flow and Quick
+  Copy, so the user has a visible "is it working right now" cue instead
+  of only the scrolling status list.
+- **Sound cue** — a short, gentle tone plays on a *successful* save
+  (main capture flow) and a successful clipboard copy (Quick Copy).
+  Does not play on failure/cancel, to avoid noise during misfires. No
+  bundled licensed audio asset needed — a small synthesized tone (or
+  `SystemSounds.Asterisk` as a trivial fallback) is enough for hobby scope.
 
 ## Tech Stack
 - **C# + WPF** (.NET, Windows-only)
-- `System.Net.Http.HttpClient` — direct REST calls to Gemini API (no SDK)
+- `System.Net.Http.HttpClient` — direct REST calls to vision providers (no SDK)
 - `System.Text.Json` — serialization
 - Local JSON files for storage — no database engine
 
@@ -50,20 +66,24 @@ rate-limited, just wait and retry.
   "class": "Barbarian",
   "lastUpdated": "2026-07-06T00:00:00Z",
   "equipment": {
-    "helm": {
-      "name": "Rage of Harrogath",
-      "rarity": "Unique",
-      "quality": "Ancestral",
-      "itemPower": 800,
-      "affixes": [
-        { "text": "+40% Fury Generation", "source": "Base" },
-        { "text": "+180 Dexterity +[150 - 180] (Class Only)", "source": "Tempered" }
-      ],
-      "specialEffects": ["..."],
-      "transfigured": false,
-      "modifiable": true
-    },
-    "weapon1": { }
+    "helm": [
+      {
+        "name": "Rage of Harrogath",
+        "rarity": "Unique",
+        "quality": "Ancestral",
+        "itemPower": 800,
+        "affixes": [
+          { "text": "+40% Fury Generation", "source": "Base" },
+          { "text": "+180 Dexterity +[150 - 180] (Class Only)", "source": "Tempered" }
+        ],
+        "specialEffects": ["..."],
+        "transfigured": false,
+        "modifiable": true
+      }
+    ],
+    "weapon": [ { }, { } ],
+    "seal": [ { } ],
+    "charm": [ { }, { }, { } ]
   }
 }
 ```
@@ -81,6 +101,23 @@ Field notes:
 - `transfigured` / `modifiable`: tracks Horadric Cube crafting state —
   whether the item has been Transfigured, and whether it can still be
   modified (tempered/masterworked/enchanted/imprinted) or is locked
+
+### Talisman items (Seal + Charms)
+Seals and Charms (Lord of Hatred's Talisman system) are stored as two more
+**categories inside the same `equipment` dictionary**, using the exact same
+`EquipmentItem` shape as gear — they carry rarity, item power, and affixes
+the same way a piece of gear does, so no separate model or JSON section
+was needed:
+- `"seal"` — capacity 1, like any single-instance gear slot.
+- `"charm"` — capacity 6 (the game's hard maximum). The seal currently
+  equipped may unlock fewer than 6 charm slots, but that's an in-game
+  current-state detail, not something the schema tracks — the array will
+  only ever contain charms the user actually captured, so it self-limits.
+- Vision extraction's `slot` field recognizes `"seal"` and `"charm"` as
+  valid values alongside the existing gear categories.
+
+This reuses `ItemDatabaseService`'s existing category-capacity/merge/evict
+logic as-is (see Decisions Log) — no new storage code path.
 
 ## Project Structure
 ```
@@ -100,33 +137,52 @@ Diabolical/
 │       │   ├── MainWindow.xaml
 │       │   ├── MainWindow.xaml.cs
 │       │   ├── ReviewEditDialog.xaml      # confirm/edit parsed item before save
-│       │   └── ReviewEditDialog.xaml.cs
+│       │   ├── ReviewEditDialog.xaml.cs
+│       │   ├── ItemDetailsDialog.xaml
+│       │   ├── ItemDetailsDialog.xaml.cs
+│       │   ├── SelectionOverlayWindow.xaml
+│       │   └── SelectionOverlayWindow.xaml.cs
 │       │
 │       ├── Services/
 │       │   ├── ScreenCaptureService.cs    # hotkey + screenshot/crop
+│       │   ├── QuickCopyService.cs        # independent throwaway lookup flow
+│       │   ├── IVisionService.cs
 │       │   ├── GeminiVisionService.cs     # API call + prompt template
+│       │   ├── OllamaVisionService.cs
+│       │   ├── VisionServiceFactory.cs
+│       │   ├── ExtractionJsonParser.cs
 │       │   ├── ItemDatabaseService.cs     # read/write character JSON
-│       │   └── HotkeyManager.cs           # global hotkey registration
+│       │   ├── HotkeyManager.cs           # global hotkey registration
+│       │   ├── AppSettingsLoader.cs
+│       │   ├── RepoPaths.cs
+│       │   └── DarkTitleBar.cs
 │       │
 │       ├── Models/
 │       │   ├── EquipmentItem.cs
 │       │   ├── CharacterEquipment.cs
+│       │   ├── ParsedItemExtraction.cs
+│       │   ├── ItemExtractionResult.cs
+│       │   ├── ItemRarity.cs
+│       │   ├── ItemQuality.cs
+│       │   ├── ItemAffix.cs
 │       │   └── AppSettings.cs             # API key, hotkey config, etc.
 │       │
 │       ├── Prompts/
-│       │   └── item_extraction_prompt.txt # Gemini system prompt + schema/examples
+│       │   └── item_extraction_prompt.txt # vision system prompt + schema/examples
 │       │
 │       └── Resources/
-│           └── (icons, sample cropped regions for testing)
+│           └── (icons, background art, sound asset if any)
 │
 ├── data/
-│   └── characters/                        # gitignored — user's actual JSON output
+│   ├── characters/                        # gitignored — user's actual JSON output
+│   │   └── .gitkeep
+│   └── exports/
 │       └── .gitkeep
 │
 └── tests/
-    └── Diabolical.Tests/                # optional; add if parsing proves fragile
+    └── Diabolical.Tests/
         ├── Diabolical.Tests.csproj
-        └── GeminiVisionServiceTests.cs
+        └── ... (unit tests per component)
 ```
 
 ## Deployment
@@ -151,24 +207,28 @@ directory when none is found, which is exactly where the standalone
 copy's config/data live.
 
 Don't run the dev build and a standalone copy simultaneously — both
-register the same global hotkey, and the second instance will fail.
+register the same global hotkeys, and the second instance will fail.
 
 ## Config & Secrets
-- Gemini API key lives in `appsettings.local.json`, gitignored.
+- Vision provider credentials/config live in `appsettings.local.json`, gitignored.
 - Check in `appsettings.example.json` showing the expected shape, no real key.
-- `appsettings.local.json` now has a second hotkey block, `QuickCopyHotkey`
-  (same `Modifiers`/`Key` shape as `Hotkey`), for the Quick Copy flow.
-  `appsettings.example.json` should default it to something that doesn't
-  collide with `Hotkey` (e.g. `Ctrl+Alt+C` alongside `Ctrl+Alt+D`).
-- `.gitignore` should include:
+- `appsettings.local.json` has two hotkey blocks, `Hotkey` (main capture)
+  and `QuickCopyHotkey`, same `Modifiers`/`Key` shape, defaulting to
+  non-colliding bindings (e.g. `Ctrl+Alt+D` and `Ctrl+Alt+C`).
+- `.gitignore` includes:
   ```
   bin/
   obj/
   *.user
   data/characters/*.json
+  data/exports/*.json
   appsettings.local.json
   .vs/
+  .vscode/
   ```
+- **Open**: first-run population mechanism for `appsettings.local.json`
+  (manual copy-and-edit vs. a first-run settings UI) is still unspecified —
+  see Open Decisions.
 
 ## Decisions Log
 - **Item model refactored to support Mythic rarity, Ancestral quality,
@@ -182,51 +242,73 @@ register the same global hotkey, and the second instance will fail.
   paragraphs, or a Transfigured amulet's extra Legendary power. Added
   `transfigured` and `modifiable` flags to track Horadric Cube crafting
   state (a Transfigured item is usually locked from further crafting).
-  This is a breaking change to the prior schema shape — acceptable since
-  no real save data exists yet.
 - **Vision output includes an inferred `slot` field**, separate from the
   final stored schema, so the merge step knows which equipment slot the
-  parsed item belongs to. Review UI allows correcting it if Gemini
-  guesses wrong. See `Prompts/item_extraction_prompt.txt` for the
-  finalized extraction prompt and its output shape.
+  parsed item belongs to. Review UI allows correcting it if the vision
+  model guesses wrong.
 - **Capture: drag-select, not fixed-region.** Tooltip position in-game
   moves depending on cursor/item location, so a fixed crop region isn't
   reliable. User hits the hotkey, then drags a selection box over the
   tooltip each time.
 - **Storage: one JSON file per character**, stored under
-  `data/characters/{characterName}.json`, matching the schema above.
-  `ItemDatabaseService` reads/writes/merges against a single character's
-  file at a time, and also supports removing a single equipment slot
-  (for the equipment list's remove action) without touching the rest
-  of the file.
+  `data/characters/{characterName}.json`. `ItemDatabaseService`
+  reads/writes/merges against a single character's file at a time, and
+  supports removing a single item from a category without touching the
+  rest of the file.
 - **HotkeyManager generalized to support multiple registered hotkeys**
   (previously supported exactly one, via a hardcoded id/event pair).
   Needed to add the Quick Copy hotkey without touching the existing
   capture hotkey's registration.
 - **Quick Copy is implemented as an independent service, not a
   modification of ScreenCaptureService.** It reuses the same
-  SelectionOverlayWindow drag-select and the same IVisionService, but has
-  no character context and never touches ItemDatabaseService — keeping the
-  tracked-gear flow and the throwaway-lookup flow fully decoupled.
+  `SelectionOverlayWindow` drag-select and the same `IVisionService`, but
+  has no character context and never touches `ItemDatabaseService` —
+  keeping the tracked-gear flow and the throwaway-lookup flow fully
+  decoupled.
 - **Quick Copy's clipboard JSON uses the same shape as
-  ItemDatabaseService.SerializeItem** (slot inlined as a leading property
+  `ItemDatabaseService.SerializeItem`** (slot inlined as a leading property
   ahead of the item fields) — consistent formatting for anything handed to
   an AI assistant as a standalone item, whether it came from the equipment
   list or a quick lookup.
+- **Vision pipeline generalized behind `IVisionService`.** Gemini 2.5
+  Flash and a local Ollama model (Qwen3-VL family) are both supported via
+  `VisionServiceFactory`, selected by the `VisionProvider` config key. No
+  automatic fallback between providers — switching is deliberate and
+  config-driven, matching this project's hobby-scope "no fallback LLM
+  providers" principle.
+- **Talisman system (Seal + Charms) folded into the existing `equipment`
+  dictionary, reversing the earlier "separate top-level section" plan.**
+  Confirmed via screenshots that a Seal and Charms are structurally
+  identical to gear items (rarity, item power, affixes), so they reuse
+  `EquipmentItem` directly. Added as two new categories: `"seal"`
+  (capacity 1) and `"charm"` (capacity 6, the game's hard maximum — the
+  currently-equipped Seal may unlock fewer slots than 6, but the schema
+  doesn't model that live-state detail since captured charms are
+  inherently self-limiting). `ItemDatabaseService`'s existing
+  capacity/merge/eviction logic (already used for `weapon`/`ring`) covers
+  this with just one new `CategoryCapacities` entry — no new storage code
+  path. The extraction prompt's `slot` enum gains `"seal"` and `"charm"`.
+- **Status indicator doubles as an activity indicator.** The existing
+  Vision Provider status box (dot + text) now also reflects
+  Idle/Capturing/Processing/Error state for both the main capture flow
+  and Quick Copy, not just provider connectivity.
+- **Sound cue added on successful save/copy only**, not on failure or
+  cancel, to avoid noise during misfires. No bundled audio asset required
+  for hobby scope — a small synthesized tone or a system sound is enough.
 
 ## Open Decisions (not yet finalized)
-- **Talisman system (Seals + Charms) is out of scope for now.** It's a
-  separate itemization layer (not tied to gear slots) added via the
-  Lord of Hatred expansion. Deliberately not modeled yet — revisit if
-  build planning needs it. If added later, it should live as its own
-  top-level section (e.g. `talisman: { seal, charms[] }`), not inside
-  `equipment`.
+- **First-run `appsettings.local.json` setup** — manual copy-and-edit of
+  `appsettings.example.json` vs. a first-run settings UI. Currently
+  manual; revisit if onboarding friction becomes annoying.
+- **Qwen3-VL model size** (4B vs 2B vs other) pending confirmation from
+  real-world testing before `appsettings.example.json`'s default model
+  tag is finalized.
 
 ## Notes for Claude Code
 - This doc reflects design decisions made in a separate planning chat.
   Implementation happens here in VS Code via Claude Code.
-- Favor small, incremental commits per component (capture → vision call →
-  parsing → review UI → storage) rather than one large initial commit.
+- Favor small, incremental commits per component rather than one large
+  initial commit.
 - **Handoffs from the design chat arrive as design-intent, not code.** They
   describe the goal, the component, and any hard constraints (e.g. "must
   use System.Text.Json") — implementation approach, file layout details,
