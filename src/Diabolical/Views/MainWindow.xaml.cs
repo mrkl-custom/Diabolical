@@ -30,9 +30,7 @@ public partial class MainWindow : Window
     private readonly ItemDatabaseService _databaseService = new();
     private readonly DispatcherTimer _providerStatusTimer;
     private readonly ObservableCollection<string> _statusMessages = new();
-    private string _visionProviderName = "";
-    private string _connectivityText = "Checking...";
-    private ActivityState _activityState = ActivityState.Idle;
+    private readonly ProviderStatusPresenter _statusPresenter;
     private bool _yoloMode;
 
     private string CurrentCharacterName => CharacterComboBox.Text.Trim();
@@ -42,16 +40,16 @@ public partial class MainWindow : Window
         InitializeComponent();
 
         StatusList.ItemsSource = _statusMessages;
+        _databaseService.Warning += AppendStatus;
         RefreshCharacterList();
 
-        _providerStatusTimer = new DispatcherTimer { Interval = ProviderStatusRefreshInterval };
-        _providerStatusTimer.Tick += async (_, _) => await RefreshProviderStatusAsync();
+        var visionProviderName = "";
 
         try
         {
             var settings = AppSettingsLoader.Load();
             _yoloMode = settings.YoloMode;
-            _visionProviderName = settings.VisionProvider;
+            visionProviderName = settings.VisionProvider;
             _hotkeyManager = new HotkeyManager();
             _captureService = new ScreenCaptureService(_hotkeyManager, settings.Hotkey);
             _captureService.CaptureCompleted += OnCaptureCompleted;
@@ -72,59 +70,62 @@ public partial class MainWindow : Window
             AppendStatus($"Capture unavailable: {ex.Message}");
         }
 
-        _ = RefreshProviderStatusAsync();
+        _statusPresenter = new ProviderStatusPresenter(_visionService, visionProviderName);
+        _statusPresenter.Changed += UpdateProviderStatusUi;
+
+        _providerStatusTimer = new DispatcherTimer { Interval = ProviderStatusRefreshInterval };
+        _providerStatusTimer.Tick += async (_, _) => await _statusPresenter.RefreshAsync();
+
+        _ = _statusPresenter.RefreshAsync();
         _providerStatusTimer.Start();
     }
 
-    private async Task RefreshProviderStatusAsync()
+    private void UpdateProviderStatusUi()
     {
-        if (_visionService is null)
+        ProviderStatusDot.Fill = _statusPresenter.IsAvailable switch
         {
-            ProviderStatusDot.Fill = Brushes.Gray;
-            _connectivityText = "No vision provider configured.";
-            UpdateProviderStatusText();
-            return;
-        }
-
-        ProviderStatusDot.Fill = Brushes.Gray;
-        _connectivityText = $"{_visionProviderName}: checking...";
-        UpdateProviderStatusText();
-
-        var result = await _visionService.CheckAvailabilityAsync();
-
-        ProviderStatusDot.Fill = result.IsAvailable ? Brushes.LimeGreen : Brushes.Red;
-        _connectivityText = result.IsAvailable
-            ? $"{_visionProviderName}: connected"
-            : $"{_visionProviderName}: unreachable{(result.Detail is null ? "" : $" — {result.Detail}")}";
-        UpdateProviderStatusText();
+            true => Brushes.LimeGreen,
+            false => Brushes.Red,
+            null => Brushes.Gray
+        };
+        ProviderStatusText.Text = _statusPresenter.StatusText;
     }
 
-    private async void RecheckProviderButton_Click(object sender, RoutedEventArgs e) => await RefreshProviderStatusAsync();
+    private async void RecheckProviderButton_Click(object sender, RoutedEventArgs e) => await _statusPresenter.RefreshAsync();
 
     /// <summary>
     /// Layers app activity (Idle/Capturing/Processing/Error) on top of the connectivity text
     /// so the status box also doubles as a "something's happening" indicator for both the
     /// main capture flow and Quick Copy, without disturbing the periodic connectivity check.
+    /// Also the single point every flow's transitions pass through (directly here for the main
+    /// capture pipeline, via ActivityChanged for both services' Capturing/cancel and Quick
+    /// Copy's own extract/clipboard steps), so it's where OverlayCaptureSession's reentrancy
+    /// guard gets released once a flow reaches Idle/Error, letting the next hotkey press start
+    /// a new capture instead of being ignored as still-in-flight.
     /// </summary>
     private void SetActivity(ActivityState state)
     {
-        _activityState = state;
-        UpdateProviderStatusText();
-    }
-
-    private void UpdateProviderStatusText()
-    {
-        ProviderStatusText.Text = _activityState switch
+        if (state is ActivityState.Idle or ActivityState.Error)
         {
-            ActivityState.Capturing => $"{_connectivityText} — Capturing...",
-            ActivityState.Processing => $"{_connectivityText} — Processing scan...",
-            ActivityState.Error => $"{_connectivityText} — Error processing scan.",
-            _ => _connectivityText
-        };
+            OverlayCaptureSession.EndCapture();
+        }
+
+        _statusPresenter.SetActivity(state);
     }
 
     /// <summary>Gentle success cue on a saved/copied item only — nothing on failure or cancel.</summary>
     private static void PlaySuccessSound() => SystemSounds.Asterisk.Play();
+
+    /// <summary>
+    /// Last-resort handler for exceptions that escape an `async void` handler — invoked by
+    /// App.xaml.cs's DispatcherUnhandledException hook instead of letting them crash the
+    /// process. Surfaces the error like any other status message rather than a silent death.
+    /// </summary>
+    public void ReportUnhandledException(Exception ex)
+    {
+        AppendStatus($"Unexpected error: {ex.Message}");
+        SetActivity(ActivityState.Error);
+    }
 
     /// <summary>Appends a message to the status list and scrolls it into view.</summary>
     private void AppendStatus(string message)
@@ -140,7 +141,15 @@ public partial class MainWindow : Window
         CharacterComboBox.Text = selected;
     }
 
-    private async void OnCaptureCompleted(byte[] imageBytes)
+    private async void OnCaptureCompleted(byte[] imageBytes) => await ProcessCaptureAsync(imageBytes);
+
+    /// <summary>
+    /// The capture-completed pipeline (validate → extract → review → upsert), pulled out of
+    /// the `async void` event handler so the handler itself is a trivial one-liner and any
+    /// exception thrown here has a single, well-known await point rather than being buried in
+    /// event-handler plumbing.
+    /// </summary>
+    private async Task ProcessCaptureAsync(byte[] imageBytes)
     {
         if (_visionService is null)
         {
@@ -191,24 +200,17 @@ public partial class MainWindow : Window
 
         var characterName = CurrentCharacterName;
         var characterClass = string.IsNullOrWhiteSpace(ClassTextBox.Text) ? null : ClassTextBox.Text.Trim();
-        await _databaseService.UpsertItemAsync(characterName, slot, item, characterClass);
+        var character = await _databaseService.UpsertItemAsync(characterName, slot, item, characterClass);
 
         RefreshCharacterList();
-        await RefreshEquipmentListAsync(characterName);
+        BindEquipmentList(character);
         AppendStatus($"Saved '{item.Name}' to {characterName}'s {slot} slot.");
         SetActivity(ActivityState.Idle);
         PlaySuccessSound();
     }
 
-    private async Task RefreshEquipmentListAsync(string characterName)
+    private void BindEquipmentList(CharacterEquipment character)
     {
-        if (string.IsNullOrWhiteSpace(characterName))
-        {
-            EquipmentDataGrid.ItemsSource = null;
-            return;
-        }
-
-        var character = await _databaseService.LoadAsync(characterName);
         EquipmentDataGrid.ItemsSource = character.Equipment
             .SelectMany(kvp => kvp.Value.Select(item => new EquipmentRow(kvp.Key, item.Name, item.Rarity, item.Quality, item.ItemPower, item)))
             .OrderBy(row => row.Slot, StringComparer.OrdinalIgnoreCase)
@@ -254,8 +256,8 @@ public partial class MainWindow : Window
             }
         }
 
-        await _databaseService.RemoveItemAsync(characterName, row.Slot, row.Name);
-        await RefreshEquipmentListAsync(characterName);
+        var character = await _databaseService.RemoveItemAsync(characterName, row.Slot, row.Name);
+        BindEquipmentList(character);
         AppendStatus($"Removed '{row.Name}' from {characterName}'s {row.Slot} slot.");
     }
 
@@ -273,7 +275,7 @@ public partial class MainWindow : Window
 
         var character = await _databaseService.LoadAsync(name);
         ClassTextBox.Text = character.Class;
-        await RefreshEquipmentListAsync(name);
+        BindEquipmentList(character);
     }
 
     private async void SwitchCharacterButton_Click(object sender, RoutedEventArgs e)
@@ -289,7 +291,7 @@ public partial class MainWindow : Window
         ClassTextBox.Text = character.Class;
         RefreshCharacterList();
         CharacterComboBox.Text = name;
-        await RefreshEquipmentListAsync(name);
+        BindEquipmentList(character);
         AppendStatus($"Switched to '{name}'.");
     }
 
@@ -301,7 +303,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        Clipboard.SetText(json);
+        ClipboardHelper.SetTextWithRetry(json);
         AppendStatus("Copied JSON to clipboard.");
     }
 

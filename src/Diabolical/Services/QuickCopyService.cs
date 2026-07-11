@@ -1,6 +1,4 @@
-using System.Windows;
 using Diabolical.Models;
-using Diabolical.Views;
 
 namespace Diabolical.Services;
 
@@ -32,23 +30,17 @@ public class QuickCopyService
 
     public void BeginQuickCopy()
     {
-        var overlay = new SelectionOverlayWindow();
-        overlay.SelectionCompleted += async (_, region) => await OnRegionSelectedAsync(region);
-        overlay.SelectionCancelled += (_, _) =>
-        {
-            ActivityChanged?.Invoke(ActivityState.Idle);
-            StatusChanged?.Invoke("Quick copy cancelled.");
-        };
-        ActivityChanged?.Invoke(ActivityState.Capturing);
-        overlay.Show();
+        OverlayCaptureSession.Begin(
+            activityChanged: state => ActivityChanged?.Invoke(state),
+            onCaptured: bytes => _ = OnCapturedAsync(bytes),
+            onCancelled: () => StatusChanged?.Invoke("Quick copy cancelled."));
     }
 
-    private async Task OnRegionSelectedAsync(Int32Rect region)
+    private async Task OnCapturedAsync(byte[] imageBytes)
     {
         ActivityChanged?.Invoke(ActivityState.Processing);
         StatusChanged?.Invoke("Quick copy: sending capture to the vision model...");
 
-        var imageBytes = ScreenRegionCapture.Capture(region);
         var result = await _visionService.ExtractItemAsync(imageBytes);
 
         if (!result.Success || result.Item is null)
@@ -60,7 +52,7 @@ public class QuickCopyService
 
         var item = result.Item.ToEquipmentItem();
         var json = ItemDatabaseService.SerializeItem(result.Item.Slot, item);
-        Clipboard.SetText(json);
+        ClipboardHelper.SetTextWithRetry(json);
 
         StatusChanged?.Invoke($"Quick copy: copied '{item.Name}' JSON to clipboard.");
         ActivityChanged?.Invoke(ActivityState.Idle);

@@ -1,5 +1,4 @@
 using Diabolical.Models;
-using Diabolical.Views;
 
 namespace Diabolical.Services;
 
@@ -34,14 +33,9 @@ public class ScreenCaptureService
     /// </summary>
     public void BeginCapture()
     {
-        var overlay = new SelectionOverlayWindow();
-        overlay.SelectionCompleted += (_, region) => CaptureCompleted?.Invoke(ScreenRegionCapture.Capture(region));
-        overlay.SelectionCancelled += (_, _) =>
-        {
-            ActivityChanged?.Invoke(ActivityState.Idle);
-            CaptureCancelled?.Invoke();
-        };
-        ActivityChanged?.Invoke(ActivityState.Capturing);
-        overlay.Show();
+        OverlayCaptureSession.Begin(
+            activityChanged: state => ActivityChanged?.Invoke(state),
+            onCaptured: bytes => CaptureCompleted?.Invoke(bytes),
+            onCancelled: () => CaptureCancelled?.Invoke());
     }
 }

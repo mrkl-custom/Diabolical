@@ -21,5 +21,5 @@ public class CharacterEquipment
     /// "weapon" and "ring" can hold up to two. See ItemDatabaseService for the merge rules.
     /// </summary>
     [JsonPropertyName("equipment")]
-    public Dictionary<string, List<EquipmentItem>> Equipment { get; set; } = new();
+    public Dictionary<string, List<EquipmentItem>> Equipment { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }

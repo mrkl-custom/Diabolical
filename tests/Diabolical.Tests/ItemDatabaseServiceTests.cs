@@ -245,6 +245,48 @@ public class ItemDatabaseServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task UpsertItemAsync_DifferentlyCasedSlot_TreatedAsSameCategory()
+    {
+        var helm = new EquipmentItem { Name = "Rage of Harrogath", Rarity = ItemRarity.Unique, Quality = ItemQuality.Ancestral, ItemPower = 800 };
+        await _sut.UpsertItemAsync("MyBarb", "Helm", helm, characterClass: "Barbarian");
+
+        // If "Helm" and "HELM" were treated as distinct categories, this would add a second
+        // helm alongside the first instead of respecting the capacity-1 rule for "helm".
+        var replacement = new EquipmentItem { Name = "Andariel's Visage", Rarity = ItemRarity.Unique, Quality = ItemQuality.Ancestral, ItemPower = 820 };
+        await _sut.UpsertItemAsync("MyBarb", "HELM", replacement);
+
+        var reloaded = await _sut.LoadAsync("MyBarb");
+
+        Assert.Single(reloaded.Equipment);
+        Assert.Equal("Andariel's Visage", Assert.Single(reloaded.Equipment["helm"]).Name);
+    }
+
+    [Fact]
+    public async Task LoadAsync_FileWithDuplicateCasedCategories_CollapsesThemIntoOne()
+    {
+        Directory.CreateDirectory(_dataDirectory);
+        var json = """
+            {
+              "character": "MyBarb",
+              "class": "Barbarian",
+              "lastUpdated": "2026-01-01T00:00:00Z",
+              "equipment": {
+                "Helm": [ { "name": "Old Helm", "rarity": "Rare", "quality": "Normal", "itemPower": 500 } ],
+                "helm": [ { "name": "Rage of Harrogath", "rarity": "Unique", "quality": "Ancestral", "itemPower": 800 } ]
+              }
+            }
+            """;
+        await File.WriteAllTextAsync(Path.Combine(_dataDirectory, "MyBarb.json"), json);
+
+        var character = await _sut.LoadAsync("MyBarb");
+
+        Assert.Single(character.Equipment);
+        Assert.Equal(2, character.Equipment["helm"].Count);
+        Assert.Contains(character.Equipment["helm"], i => i.Name == "Old Helm");
+        Assert.Contains(character.Equipment["helm"], i => i.Name == "Rage of Harrogath");
+    }
+
+    [Fact]
     public async Task RoundTrip_WrittenFileMatchesSchemaShape()
     {
         var helm = new EquipmentItem

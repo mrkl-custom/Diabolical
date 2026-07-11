@@ -1,4 +1,3 @@
-using System.IO;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -14,7 +13,6 @@ public class GeminiVisionService : IVisionService
 {
     private const string Model = "gemini-2.5-flash";
     private const string ApiBaseUrl = "https://generativelanguage.googleapis.com/v1beta/models";
-    private const string DefaultPromptRelativePath = "Prompts/item_extraction_prompt.txt";
 
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
@@ -22,7 +20,8 @@ public class GeminiVisionService : IVisionService
     private readonly string _apiKey;
     private readonly string _prompt;
 
-    public GeminiVisionService() : this(new HttpClient(), AppSettingsLoader.Load().Gemini.ApiKey, LoadDefaultPrompt())
+    public GeminiVisionService(HttpClient httpClient, GeminiSettings settings, string prompt)
+        : this(httpClient, settings.ApiKey, prompt)
     {
     }
 
@@ -56,10 +55,15 @@ public class GeminiVisionService : IVisionService
         HttpResponseMessage response;
         try
         {
-            var requestUrl = $"{ApiBaseUrl}/{Model}:generateContent?key={_apiKey}";
-            response = await _httpClient.PostAsJsonAsync(requestUrl, request, JsonOptions, cancellationToken);
+            var requestUrl = $"{ApiBaseUrl}/{Model}:generateContent";
+            using var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUrl)
+            {
+                Content = JsonContent.Create(request, options: JsonOptions)
+            };
+            requestMessage.Headers.Add("x-goog-api-key", _apiKey);
+            response = await _httpClient.SendAsync(requestMessage, cancellationToken);
         }
-        catch (HttpRequestException ex)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
             return ItemExtractionResult.Fail($"Request to Gemini failed: {ex.Message}");
         }
@@ -102,8 +106,9 @@ public class GeminiVisionService : IVisionService
 
         try
         {
-            var requestUrl = $"{ApiBaseUrl}?key={_apiKey}";
-            using var response = await _httpClient.GetAsync(requestUrl, cancellationToken);
+            using var requestMessage = new HttpRequestMessage(HttpMethod.Get, ApiBaseUrl);
+            requestMessage.Headers.Add("x-goog-api-key", _apiKey);
+            using var response = await _httpClient.SendAsync(requestMessage, cancellationToken);
             if (response.IsSuccessStatusCode)
             {
                 return new VisionAvailabilityResult(true);
@@ -117,7 +122,4 @@ public class GeminiVisionService : IVisionService
             return new VisionAvailabilityResult(false, $"Request to Gemini failed: {ex.Message}");
         }
     }
-
-    private static string LoadDefaultPrompt() =>
-        File.ReadAllText(Path.Combine(AppContext.BaseDirectory, DefaultPromptRelativePath));
 }

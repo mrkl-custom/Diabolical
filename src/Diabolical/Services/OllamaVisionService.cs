@@ -1,4 +1,3 @@
-using System.IO;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -14,18 +13,12 @@ namespace Diabolical.Services;
 /// </summary>
 public class OllamaVisionService : IVisionService
 {
-    private const string DefaultPromptRelativePath = "Prompts/item_extraction_prompt.txt";
-
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     private readonly HttpClient _httpClient;
     private readonly string _baseUrl;
     private readonly string _model;
     private readonly string _prompt;
-
-    public OllamaVisionService() : this(new HttpClient(), AppSettingsLoader.Load().Ollama, LoadDefaultPrompt())
-    {
-    }
 
     public OllamaVisionService(HttpClient httpClient, OllamaSettings settings, string prompt)
         : this(httpClient, settings.BaseUrl, settings.Model, prompt)
@@ -59,7 +52,7 @@ public class OllamaVisionService : IVisionService
             var requestUrl = $"{_baseUrl}/api/generate";
             response = await _httpClient.PostAsJsonAsync(requestUrl, request, JsonOptions, cancellationToken);
         }
-        catch (HttpRequestException ex)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
             return ItemExtractionResult.Fail($"Request to Ollama failed: {ex.Message}");
         }
@@ -119,7 +112,4 @@ public class OllamaVisionService : IVisionService
             return new VisionAvailabilityResult(false, $"Request to Ollama failed: {ex.Message}");
         }
     }
-
-    private static string LoadDefaultPrompt() =>
-        File.ReadAllText(Path.Combine(AppContext.BaseDirectory, DefaultPromptRelativePath));
 }

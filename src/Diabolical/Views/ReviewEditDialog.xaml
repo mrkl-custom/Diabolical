@@ -23,7 +23,7 @@
         </Grid.ColumnDefinitions>
 
         <TextBlock Text="Slot" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center"/>
-        <TextBox x:Name="SlotTextBox" Grid.Row="0" Grid.Column="1" Margin="0,4"/>
+        <ComboBox x:Name="SlotComboBox" Grid.Row="0" Grid.Column="1" Margin="0,4" IsEditable="True"/>
 
         <TextBlock Text="Name" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center"/>
         <TextBox x:Name="NameTextBox" Grid.Row="1" Grid.Column="1" Margin="0,4"/>

@@ -29,6 +29,10 @@ public class ItemDatabaseService
 
     private readonly string _dataDirectory;
 
+    /// <summary>Fires when a character file couldn't be read as-is (e.g. corrupted JSON), so
+    /// callers can surface a status message instead of the load silently starting over.</summary>
+    public event Action<string>? Warning;
+
     public ItemDatabaseService() : this(ResolveDefaultDataDirectory())
     {
     }
@@ -46,9 +50,23 @@ public class ItemDatabaseService
             return new CharacterEquipment { Character = characterName };
         }
 
-        await using var stream = File.OpenRead(path);
-        var character = await JsonSerializer.DeserializeAsync<CharacterEquipment>(stream, SerializerOptions, cancellationToken);
-        return character ?? new CharacterEquipment { Character = characterName };
+        try
+        {
+            await using var stream = File.OpenRead(path);
+            var character = await JsonSerializer.DeserializeAsync<CharacterEquipment>(stream, SerializerOptions, cancellationToken);
+            if (character is null)
+            {
+                return new CharacterEquipment { Character = characterName };
+            }
+
+            character.Equipment = NormalizeSlotKeys(character.Equipment);
+            return character;
+        }
+        catch (JsonException ex)
+        {
+            Warning?.Invoke($"'{characterName}'s save file is corrupted ({ex.Message}) — starting a fresh one. The old file was left on disk.");
+            return new CharacterEquipment { Character = characterName };
+        }
     }
 
     public async Task SaveAsync(CharacterEquipment character, CancellationToken cancellationToken = default)
@@ -83,6 +101,7 @@ public class ItemDatabaseService
         string? characterClass = null,
         CancellationToken cancellationToken = default)
     {
+        slot = slot.ToLowerInvariant();
         var character = await LoadAsync(characterName, cancellationToken);
         character.Character = characterName;
         if (characterClass is not null)
@@ -127,6 +146,7 @@ public class ItemDatabaseService
         string itemName,
         CancellationToken cancellationToken = default)
     {
+        slot = slot.ToLowerInvariant();
         var character = await LoadAsync(characterName, cancellationToken);
         character.Character = characterName;
 
@@ -185,6 +205,31 @@ public class ItemDatabaseService
         }
 
         return output.ToJsonString(SerializerOptions);
+    }
+
+    /// <summary>
+    /// System.Text.Json assigns a fresh, default-comparer Dictionary through the Equipment
+    /// property setter on deserialize, discarding the OrdinalIgnoreCase comparer set by its
+    /// field initializer. Rebuilds it case-insensitively here, merging any categories that
+    /// only differ by case (e.g. a file saved before slots were normalized to lowercase) so
+    /// they collapse back into a single category instead of silently duplicating.
+    /// </summary>
+    private static Dictionary<string, List<EquipmentItem>> NormalizeSlotKeys(Dictionary<string, List<EquipmentItem>> equipment)
+    {
+        var normalized = new Dictionary<string, List<EquipmentItem>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (slot, items) in equipment)
+        {
+            if (normalized.TryGetValue(slot, out var existing))
+            {
+                existing.AddRange(items);
+            }
+            else
+            {
+                normalized[slot] = items;
+            }
+        }
+
+        return normalized;
     }
 
     private string GetFilePath(string characterName) => Path.Combine(_dataDirectory, $"{characterName}.json");

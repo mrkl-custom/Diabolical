@@ -13,6 +13,13 @@ namespace Diabolical.Views;
 /// </summary>
 public partial class ReviewEditDialog : Window
 {
+    /// <summary>Known equipment categories, pre-filled into the slot ComboBox so a typo
+    /// (e.g. "glvoes") doesn't silently create a junk category capped at 1 item. Still
+    /// editable (IsEditable="True" in XAML) so a game patch adding a new slot doesn't
+    /// require a rebuild.</summary>
+    private static readonly string[] KnownSlots =
+        { "helm", "chest", "gloves", "pants", "boots", "weapon", "ring", "amulet", "seal", "charm" };
+
     public string Slot { get; private set; } = string.Empty;
     public EquipmentItem Item { get; private set; } = new();
 
@@ -26,7 +33,8 @@ public partial class ReviewEditDialog : Window
         QualityComboBox.ItemsSource = Enum.GetValues<ItemQuality>();
         AffixSourceColumn.ItemsSource = Enum.GetValues<AffixSource>();
 
-        SlotTextBox.Text = parsed.Slot;
+        SlotComboBox.ItemsSource = KnownSlots;
+        SlotComboBox.Text = parsed.Slot;
         NameTextBox.Text = parsed.Name;
         RarityComboBox.SelectedItem = parsed.Rarity;
         QualityComboBox.SelectedItem = parsed.Quality;
@@ -57,7 +65,7 @@ public partial class ReviewEditDialog : Window
     {
         AffixesDataGrid.CommitEdit(DataGridEditingUnit.Row, true);
 
-        if (string.IsNullOrWhiteSpace(SlotTextBox.Text))
+        if (string.IsNullOrWhiteSpace(SlotComboBox.Text))
         {
             MessageBox.Show(this, "Slot is required.", "Diabolical", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
@@ -69,7 +77,7 @@ public partial class ReviewEditDialog : Window
             return;
         }
 
-        Slot = SlotTextBox.Text.Trim();
+        Slot = SlotComboBox.Text.Trim();
         Item = new EquipmentItem
         {
             Name = NameTextBox.Text.Trim(),

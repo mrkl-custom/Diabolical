@@ -40,7 +40,7 @@ public partial class ItemDetailsDialog : Window
 
     private void CopyJsonButton_Click(object sender, RoutedEventArgs e)
     {
-        Clipboard.SetText(ItemDatabaseService.SerializeItem(_slot, _item));
+        ClipboardHelper.SetTextWithRetry(ItemDatabaseService.SerializeItem(_slot, _item));
     }
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
