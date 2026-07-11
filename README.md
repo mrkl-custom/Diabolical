@@ -168,6 +168,11 @@ Provider** status box shows connectivity plus live activity
   vision provider — Google's API if you chose Gemini, or your own machine if
   you chose Ollama.
 
+## Known issues and limitations
+
+- Local LLM accuracy is model-dependent. Current prompt is fairly accurate 
+  with qwen2.5vl:3b, but struggles with sockets and greater affixes
+
 ## Troubleshooting
 
 - **"Failed to register hotkey"** — another app owns that binding; change the

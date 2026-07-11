@@ -69,7 +69,7 @@ Output schema:
                          // reliably visible in a screenshot and isn't
                          // tracked.
       "greaterAffix": boolean // true if this line carries a sunburst
-                         // glyph bullet (Greater Affix marker), false
+                         // glyph bullet (Greater Affix marker) and highlighted affix text, false
                          // otherwise. The item name area may also show
                          // one repeated sunburst per Greater Affix on the
                          // item — do not add those to "name" (see above).
@@ -84,60 +84,24 @@ Output schema:
                               // flavor text or footer metadata here — see
                               // the ignore list below.
   "sockets": string[],        // one entry per socket on the item, in
-                              // order. How many sockets to look for is
-                              // fixed by the item's category — use this
-                              // to know how hard to look, not just
-                              // whether to look at all:
-                              //   - gloves, boots: NEVER have sockets.
-                              //     Don't scan these at all; always [].
-                              //   - amulet, ring: 0 or 1 socket.
+                              // order. Items may have 0 to 2 sockets on them.
+                              //   - gloves, boots: no sockets, always [].
+                              //   - amulet, ring: 0 or 1.
                               //   - helm, chest, pants: 0, 1, or 2
-                              //     sockets.
-                              //   - weapon: one-handed/Focus/Shield: 0 or
-                              //     1; two-handed/Bow (check "itemType"
-                              //     for "Two-Handed" or a bow-type
-                              //     weapon): 0, 1, or 2.
-                              // Not every eligible item actually has a
-                              // socket added, so absence is normal — but
-                              // for helm/chest/pants/2H-weapon/bow
-                              // specifically, deliberately check for TWO
-                              // socket-icon lines, not just one, before
-                              // settling on a shorter list.
-                              // Sockets hold one of two things, sharing
-                              // one small circular/gem-shaped bullet
-                              // icon distinct from the diamond affix
-                              // bullets and sunburst special-effect
-                              // bullets. This section sits AFTER the
-                              // main affixes/specialEffects block and
-                              // BEFORE any italic flavor-text quote or
-                              // footer metadata (Requires Level, Account
-                              // Bound, Sell Value, etc.) — it has no
-                              // heading, so it's easy to miss. Capture
-                              // verbatim as one string per socket:
-                              //  - unfilled: the literal "Empty Socket"
-                              //  - a socketed Gem: just its resulting
-                              //    stat line, with no gem name attached
-                              //    (e.g. "+250 Resistance to All
-                              //    Elements", "x22% Physical Damage
-                              //    Multiplier") — a 2-socket item can
-                              //    show this SAME line twice (one gem
-                              //    per socket); capture each occurrence
-                              //    as its own separate entry, don't
-                              //    merge or dedupe them
-                              //  - a completed Runeword (only possible
-                              //    when both of an item's 2 sockets are
-                              //    filled with a matching rune pair): one
-                              //    combined header line "<Name>
-                              //    (<ratio>) - <Runeword Name>" (e.g.
-                              //    "NeoOhm (200/600) - Graceful
-                              //    Trickery") plus its 1-3 line effect
-                              //    description (may end with a
-                              //    parenthetical like "(Overflow:
-                              //    ...)") — capture the header plus full
-                              //    effect text as ONE string (it
-                              //    represents both sockets together, so
-                              //    add only one "sockets" entry for it,
-                              //    not two)
+                              //   - one-handed weapon/Focus/Shield: 0 or 1
+                              //   - two-handed weapon /Bow: 0, 1, or 2.
+                              // sockets can be empty or filled
+                              //   - empty sockets are distinguished by a circular
+                              //     empty bullet and the text "Empty Socket"
+                              //   - filled sockets are disinguished by a circular
+                              //     bullet with the type of the gem embedded in it 
+                              //     and the gem type specific affix
+                              //   - normal gems use one socket and have an affix per gem
+                              //     (e.g. "+250 Resistance to All Elements", 
+                              //     "x22% Physical Damage Multiplier") 
+                              //   - two-socket items may have two of the same gem slotted - check and include both
+                              //   - runewords combine two sockets and have a single affix
+                              //     for the entire runeword (e.g. "NeoNer (200/600) - Grafeful Trickery")
   "transfigured": boolean,    // true if tooltip shows a "Transfigured"
                               // tag/indicator, false/unknown otherwise
   "modifiable": boolean       // false ONLY if the tooltip shows an
@@ -197,10 +161,8 @@ Example output:
   "modifiable": true
 }
 Note: "+250 Resistance to All Elements" appeared after the special
-effects with its own socket-bullet icon (not a diamond affix bullet) —
+effects with its own socket-bullet icon —
 a single filled socket with a bare stat bonus, no rune name attached.
-It is easy to mistake this for a continuation of the special effects
-or an implicit affix; check specifically for the distinct bullet icon.
 
 Second example, showing a socketed runeword, a non-Ancestral item, and an
 unmodifiable item:
@@ -222,14 +184,9 @@ unmodifiable item:
   "sockets": [
     "NeoOhm (200/600) - Graceful Trickery: Avoid health damage while fighting for 2 seconds. (3 times) Invoke the Rogue's Concealment Skill for 5 seconds, gaining Movement Speed, Unstoppable, and Stealth. (Overflow: Increased Duration)"
   ],
-  "transfigured": false,
+  "transfigured": true,
   "modifiable": false
 }
-Note: this item's type line was "Unique Gloves" (no "Ancestral" word), so
-quality is "Normal" even though a numeric "25 (⊛ +25) Quality" score was
-also visible near Item Power — that score is masterworkingQuality: 25, a
-separate stat. The footer showed an explicit "Unmodifiable" tag, so
-modifiable is false.
 
 Third example, showing masterworkingQuality pushed above the normal 0-25
 range by Transfiguration:
@@ -257,12 +214,6 @@ range by Transfiguration:
   "transfigured": true,
   "modifiable": true
 }
-Note: the tooltip showed "29 (⊛ +25) Quality" — report the total, 29,
-verbatim even though it exceeds the normal 0-25 range; this item's
-Transfigured tag is why. This item also has its own "+4 Item Quality
-[1 - 15]" affix line — that's a real rolled affix (capture it normally
-in "affixes" like any other stat line), separate from the
-"masterworkingQuality" header stat.
 
 Fourth example, showing a two-handed weapon with both sockets filled by
 Gems (not a Runeword — no name/ratio, just each Gem's resulting stat
@@ -294,11 +245,7 @@ line repeated once per socket):
   "modifiable": true
 }
 Note: this is a two-handed weapon, so it can have up to 2 sockets — both
-were filled here, each with its own Gem (Skull, which gives a Physical
-Damage Multiplier when socketed in a weapon), shown as two identical
-"x22% Physical Damage Multiplier" lines with no name or ratio attached.
-These are two separate socketed Gems, not a duplicate affix and not a
-Runeword — capture each occurrence as its own "sockets" entry rather
+were filled here - capture each occurrence as its own "sockets" entry rather
 than merging or dropping them.
 
 Fifth example, showing an empty socket sitting between the special
@@ -325,11 +272,6 @@ effects and an italic flavor-text quote:
   "transfigured": false,
   "modifiable": true
 }
-Note: masterworkingQuality is 0 because no numeric "Quality" stat was
-shown on this tooltip at all — not every item displays one. "Empty
-Socket" appeared right after the special effect and before the italic
-flavor-text quote; check that position specifically since nothing else
-on the tooltip announces a sockets section.
 
 A truncated tooltip (a "Scroll Down" indicator at the bottom) means
 content below the fold is not visible in the screenshot and cannot be
